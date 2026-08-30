@@ -83,10 +83,25 @@ jobs:
       - name: Fail early if the registry credentials are missing
         # The login action's own error for an empty secret is unhelpful, and it
         # arrives after the build has already run.
+        #
+        # The values reach the shell through `env:` rather than being
+        # interpolated into the script with `${{ }}`. GitHub masks secrets in
+        # logs either way, but interpolation splices the value into the command
+        # line itself — where a token containing shell metacharacters would be
+        # evaluated rather than compared, and where it is one `set -x` away
+        # from being echoed.
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "::error::DOCKERHUB_USERNAME and DOCKERHUB_TOKEN must be set as repository secrets."
-            echo "::error::Create an access token at Docker Hub → Account settings → Personal access tokens (Read & Write)."
+          missing=""
+          [ -n "$DOCKERHUB_USERNAME" ] || missing="$missing DOCKERHUB_USERNAME"
+          [ -n "$DOCKERHUB_TOKEN" ] || missing="$missing DOCKERHUB_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "::error::Add them under Settings → Secrets and variables → Actions → Repository secrets."
+            echo "::error::DOCKERHUB_TOKEN is an access token from Docker Hub → Account settings → Personal access tokens, scoped Read & Write."
+            echo "::error::If they are already set: repository *variables* are a different tab from *secrets*; an Environment secret needs \`environment:\` on this job; and an organisation secret needs this repository added to its access list."
             exit 1
           fi
 
