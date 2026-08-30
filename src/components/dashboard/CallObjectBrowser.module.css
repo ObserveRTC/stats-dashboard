@@ -1,0 +1,179 @@
+.toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.hint {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.action {
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.action:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-light));
+}
+
+.action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.groupCount {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  background: var(--border-light);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 0.05rem 0.4rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.item {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.file {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--section-bg, var(--card-bg));
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+}
+
+.file:hover {
+  background: var(--hover-bg, var(--border-light));
+}
+
+.fileOpen {
+  background: var(--hover-bg, var(--border-light));
+}
+
+.chevron,
+.chevronOpen {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.filename {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+}
+
+.tagSummary {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.tagRouter {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.detail {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.size {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.jsonPanel {
+  border-top: 1px solid var(--border-light);
+  background: var(--card-bg);
+}
+
+.jsonBody {
+  padding: 0.5rem 0.6rem;
+  max-height: 30rem;
+  overflow: auto;
+  font-size: 0.7rem;
+}
+
+.loading,
+.error {
+  margin: 0;
+  padding: 0.6rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.error {
+  color: var(--danger);
+}

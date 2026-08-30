@@ -1,0 +1,57 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 14px;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 30px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.track {
+  flex: 1;
+  height: 8px;
+  position: relative;
+  background: var(--border-light);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  opacity: 0.85;
+  transition: opacity 0.1s;
+}
+
+.segment:hover {
+  opacity: 1;
+}
+
+.states {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.statePill {
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+}

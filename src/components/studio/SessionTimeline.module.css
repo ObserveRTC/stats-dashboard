@@ -1,0 +1,144 @@
+.wrapper {
+  background: var(--card-bg);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-light);
+}
+
+.header {
+  padding: 0.5rem 0.75rem 0.4rem;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.subtitle {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.chartArea {
+  padding: 0.5rem 0.5rem 0;
+  position: relative;
+}
+
+.flex {
+  display: flex;
+  align-items: stretch;
+}
+
+.labels {
+  flex: 0 0 110px;
+  display: flex;
+  flex-direction: column;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.labelRow:hover {
+  color: var(--accent);
+}
+
+.chartCol {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+/* ── Legend ──────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.legendRegion {
+  font-weight: 600;
+}
+
+.legendId {
+  font-family: ui-monospace, monospace;
+  font-size: 0.6rem;
+  opacity: 0.55;
+}
+
+/* ── Tooltip ─────────────────────────────────────────── */
+
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.68rem;
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  opacity: 0;
+  transition: opacity 0.1s;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.tooltipName {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.tooltipId {
+  font-family: ui-monospace, monospace;
+  font-size: 0.6rem;
+  opacity: 0.55;
+  display: block;
+}
+
+.tooltipSfu {
+  margin-top: 3px;
+  color: var(--text-muted);
+}
+
+.tooltipTime {
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+}

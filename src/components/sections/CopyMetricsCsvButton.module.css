@@ -1,0 +1,28 @@
+.btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0.2rem 0.3rem;
+  cursor: pointer;
+}
+
+.btn:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-light));
+}
+
+.btnDone {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, var(--border-light));
+}
+
+.btnFailed {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border-light));
+}

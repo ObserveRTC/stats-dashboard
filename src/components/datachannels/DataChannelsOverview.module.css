@@ -1,0 +1,73 @@
+.hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.label {
+  color: var(--text-muted);
+}
+
+.dirBadge {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--text-muted);
+}
+
+.dirBadge[data-direction='producer'] {
+  background: var(--accent);
+}
+
+.dirBadge[data-direction='consumer'] {
+  background: var(--success);
+}
+
+.matchPill {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.matchPill[data-match='attachment'] {
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+  color: var(--success);
+}
+
+.matchPill[data-match='label'] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--warning, #d97706) 45%, transparent);
+  color: var(--warning, #d97706);
+}
+
+.note {
+  margin: 0.3rem 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

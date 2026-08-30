@@ -1,0 +1,163 @@
+.narrative {
+  margin-bottom: 0.7rem;
+}
+
+.narrative p {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--text-secondary, var(--text));
+}
+
+.lead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.scoreUnit {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: -0.2rem;
+}
+
+.band {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.3rem;
+}
+
+.leadText {
+  flex: 1 1 16rem;
+}
+
+.groupBar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.groupSlice {
+  min-width: 0;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  background: var(--text-muted);
+  opacity: 0.75;
+}
+
+.groupSlice[data-group='path'] { background: var(--accent); }
+.groupSlice[data-group='audio'] { background: var(--violet, #8b5cf6); }
+.groupSlice[data-group='video-receive'] { background: var(--success); }
+.groupSlice[data-group='video-send'] { background: var(--warning, #d97706); }
+
+.groupLabel {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.3rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reasonLabel {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.reasonKey {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.scopes {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.entityCount {
+  opacity: 0.7;
+}
+
+.meaning {
+  line-height: 1.5;
+  min-width: 16rem;
+}
+
+.guidance {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.note,
+.footnote {
+  margin: 0.6rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Measured magnitudes (schema ≥3.6): the points a reason actually subtracted. */
+.points {
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A reason from an older sample, which named itself without a magnitude. */
+.unmeasured {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: help;
+}

@@ -1,0 +1,38 @@
+.toggle {
+  position: fixed;
+  top: 0.75rem;
+  /* Sits to the left of ThemeToggle (which is at right: 0.75rem). */
+  right: 3.25rem;
+  z-index: 60;
+  height: 32px;
+  min-width: 44px;
+  padding: 0 0.55rem;
+  border-radius: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font: inherit;
+}
+
+.toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.toggle[data-tz="utc"] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-color));
+}
+
+.text {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-variant: all-small-caps;
+}

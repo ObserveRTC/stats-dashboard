@@ -1,0 +1,91 @@
+.wrapper {
+  background: var(--card-bg);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-light);
+}
+
+.header {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.chartArea {
+  padding: 0.5rem;
+  position: relative;
+}
+
+.flex {
+  display: flex;
+  align-items: stretch;
+}
+
+.labels {
+  flex: 0 0 100px;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.chartCol {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 3px 10px 8px;
+  font-size: 11px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.legendColor {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.legendRegion {
+  font-weight: 600;
+}
+
+.legendSfuId {
+  opacity: 0.5;
+  font-size: 9px;
+  font-family: monospace;
+}

@@ -1,0 +1,25 @@
+.row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  font-size: 0.75rem;
+  min-width: 0;
+}
+
+.key {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.key::after {
+  content: ':';
+}
+
+.value {
+  color: var(--text-primary);
+  word-break: break-all;
+  min-width: 0;
+}

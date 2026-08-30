@@ -1,0 +1,50 @@
+{
+  "name": "observertc-stats",
+  "version": "0.1.0",
+  "description": "Dashboard for observer-js ClientSample streams and mediasoup router samples: per-client WebRTC reports, SFU mapping and call-level diagnostics.",
+  "license": "Apache-2.0",
+  "author": "ObserveRTC",
+  "homepage": "https://observertc.org/",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:router-mapping": "node --experimental-strip-types scripts/routerServerData.test.ts",
+    "test:fixture": "node --experimental-strip-types scripts/realFixture.test.ts",
+    "test": "npm run test:router-mapping && npm run test:fixture && npm run test:joins && npm run test:issue-lanes && npm run test:transport-timeline && npm run test:score-explanation && npm run test:call-summary && npm run test:tab-visibility && npm run test:csv && npm run test:sample-reasons && npm run test:router-entities && npm run test:call-dashboard && npm run test:worker-requests && npm run test:ice-candidate-story && npm run test:storage-config && npm run test:help",
+    "test:joins": "node --experimental-strip-types scripts/clientJoins.test.ts",
+    "test:issue-lanes": "node --experimental-strip-types scripts/issueLanes.test.ts",
+    "test:transport-timeline": "node --experimental-strip-types scripts/transportTimeline.test.ts",
+    "test:score-explanation": "node --experimental-strip-types scripts/scoreExplanation.test.ts",
+    "test:call-summary": "node --experimental-strip-types scripts/callSummaryMerge.test.ts",
+    "test:tab-visibility": "node --experimental-strip-types scripts/tabVisibility.test.ts",
+    "test:csv": "node --experimental-strip-types scripts/csvExport.test.ts",
+    "test:sample-reasons": "node --experimental-strip-types scripts/sampleScoreReasons.test.ts",
+    "test:router-entities": "node --experimental-strip-types scripts/routerEntityTimeline.test.ts",
+    "test:call-dashboard": "node --experimental-strip-types scripts/callDashboard.test.ts",
+    "test:worker-requests": "node --experimental-strip-types scripts/workerRequests.test.ts",
+    "test:ice-candidate-story": "node --experimental-strip-types scripts/iceCandidateStory.test.ts",
+    "test:storage-config": "node --experimental-strip-types scripts/storageConfig.test.ts",
+    "test:help": "node --experimental-strip-types scripts/help.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1061.0",
+    "@aws-sdk/s3-request-presigner": "^3.1062.0",
+    "d3": "^7.9.0",
+    "html-to-image": "^1.11.13",
+    "next": "^15.3.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.22.4",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,174 @@
+.panel {
+  padding: 0.6rem 0.9rem 0.8rem;
+  background: color-mix(in srgb, var(--text-muted) 5%, transparent);
+  border-left: 2px solid var(--border-light);
+}
+
+.verdict {
+  margin: 0 0 0.6rem;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.verdictGood { color: var(--quality-good); }
+.verdictWarn { color: var(--quality-fair); }
+.verdictBad { color: var(--quality-poor); }
+.verdictNeutral { color: var(--text); }
+
+.sub {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0.7rem 0 0.35rem;
+}
+
+/* ── the timeline ───────────────────────────────────────── */
+
+.timeline {
+  display: grid;
+  grid-template-columns: auto auto 10px 1fr;
+  gap: 0.15rem 0.55rem;
+  align-items: baseline;
+  font-size: 0.7rem;
+}
+
+.time {
+  font-family: ui-monospace, monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.offset {
+  font-family: ui-monospace, monospace;
+  font-size: 0.63rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* A dot per step, so the column reads as a sequence rather than a table. */
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+  background: var(--text-muted);
+}
+
+.dotGood { background: var(--quality-good); }
+.dotWarn { background: var(--quality-fair); }
+.dotBad { background: var(--quality-poor); }
+
+.what {
+  line-height: 1.5;
+  min-width: 0;
+}
+
+.detail {
+  color: var(--text-muted);
+}
+
+/* ── pairs ──────────────────────────────────────────────── */
+
+.pairGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.5rem;
+}
+
+.pairCard {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.68rem;
+  line-height: 1.6;
+  min-width: 0;
+}
+
+.pairHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.pairPeer {
+  font-family: ui-monospace, monospace;
+  font-size: 0.66rem;
+  overflow-wrap: anywhere;
+}
+
+.pairRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--text-muted);
+}
+
+.pairValue {
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+  font-size: 0.65rem;
+}
+
+.stateChain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  align-items: center;
+  margin-top: 0.2rem;
+}
+
+.stateChip {
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+}
+
+.stateSucceeded { background: color-mix(in srgb, var(--quality-good) 20%, transparent); }
+.stateFailed { background: color-mix(in srgb, var(--quality-poor) 20%, transparent); }
+
+.arrow {
+  color: var(--text-muted);
+  font-size: 0.6rem;
+}
+
+/* ── the expander control on the row ────────────────────── */
+
+.expandCell {
+  width: 22px;
+  text-align: center;
+}
+
+.expandBtn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.expandBtn:hover { color: var(--text); }
+
+.chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform 120ms ease;
+}
+
+.chevronOpen {
+  width: 12px;
+  height: 12px;
+  transform: rotate(90deg);
+}
+
+.clickableRow {
+  cursor: pointer;
+}

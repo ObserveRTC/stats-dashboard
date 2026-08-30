@@ -1,0 +1,43 @@
+# Everything the image does not need. Keeping this tight matters twice over:
+# a smaller build context is faster, and nothing secret can reach a layer by
+# accident.
+
+# Dependencies and build output — reinstalled and rebuilt inside the image
+node_modules
+.next
+out
+
+# Secrets and local configuration. `.env.example` is deliberately NOT ignored:
+# it is documentation. Real values arrive at `docker run`, never in a layer.
+.env
+.env.local
+.env.*.local
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Editor and OS noise
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker's own files
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Staging area for files removed before release — never part of a build
+_release-cleanup
+
+# Logs and scratch
+*.log
+npm-debug.log*
+coverage
+tmp/
+temp/

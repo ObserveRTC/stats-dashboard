@@ -1,0 +1,326 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+/* ── Pair card (prominent = nominated) ── */
+
+.pairCard {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  background: var(--card-bg);
+}
+
+.pairCardProminent {
+  border-color: var(--success);
+  border-width: 1.5px;
+}
+
+.pairHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.nominatedTag {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--success);
+}
+
+.pairId {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+}
+
+.pairBytes {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* ── Local ↔ Remote body ── */
+
+.pairBody {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.pairConnector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.connectorLine {
+  flex: 1;
+  width: 1px;
+  background: var(--border-light);
+}
+
+.connectorArrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 2px 0;
+}
+
+/* ── Candidate card ── */
+
+.candidateCard {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
+
+.candidateLocal {
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.candidateRemote {
+  background: rgba(249, 115, 22, 0.06);
+  border: 1px solid rgba(249, 115, 22, 0.15);
+}
+
+.candidateTopRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.candidateLabel {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.candidateLocal .candidateLabel { color: #3b82f6; }
+.candidateRemote .candidateLabel { color: #f97316; }
+
+.candidateMain {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidateMeta {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.1rem;
+}
+
+/* ── Other pairs (collapsible) ── */
+
+.otherPairs {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--card-bg);
+}
+
+.otherSummary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.otherSummary::-webkit-details-marker {
+  display: none;
+}
+
+.otherSummary::before {
+  content: '▸';
+  font-size: 0.65rem;
+  transition: transform 0.15s;
+}
+
+.otherPairs[open] > .otherSummary::before {
+  transform: rotate(90deg);
+}
+
+.tableCount {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--border-light);
+  padding: 0 0.3rem;
+  border-radius: 8px;
+  min-width: 1rem;
+  text-align: center;
+}
+
+.otherContent {
+  padding: 0 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* ── State groups ── */
+
+.stateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stateGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+}
+
+.stateGroupCount {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+/* ── Compact pair rows ── */
+
+.compactList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.compactPair {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.compactRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-family: ui-monospace, monospace;
+  color: var(--text-secondary);
+  text-align: left;
+  border-radius: 3px;
+}
+
+.compactRow:hover {
+  background: var(--hover-bg);
+}
+
+.compactLocal {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #3b82f6;
+}
+
+.compactArrow {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+}
+
+.compactRemote {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f97316;
+}
+
+.compactMeta {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.compactChevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.compactChevronOpen {
+  transform: rotate(90deg);
+}
+
+.compactDetail {
+  padding: 0.4rem;
+  border-top: 1px solid var(--border-light);
+  background: var(--hover-bg);
+}
+
+.compactPairId {
+  margin-top: 0.3rem;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+  text-align: center;
+}
+
+/* ── State badges ── */
+
+.stateBadge {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.stateSucceeded {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.stateFailed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.stateProgress {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent);
+}
+
+.stateDefault {
+  background: var(--border-light);
+  color: var(--text-muted);
+}

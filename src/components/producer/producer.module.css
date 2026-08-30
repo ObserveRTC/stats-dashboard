@@ -1,0 +1,173 @@
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.infoCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.infoCellLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.infoCellValue {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.kindBadge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  color: var(--accent);
+  border: 1px solid var(--border-light);
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.chartsGroupLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.noStats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+/* Timeline */
+.timelineWrap {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.timelineBar {
+  position: relative;
+  height: 16px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-light);
+  overflow: visible;
+}
+
+.timelineSeg {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.timelineSegActive {
+  background: var(--success, #22c55e);
+  opacity: 0.7;
+}
+
+.timelineSegPaused {
+  background: var(--warning, #f59e0b);
+  opacity: 0.7;
+}
+
+.timelineDot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--card-bg, #fff);
+  z-index: 1;
+}
+
+.timelineDotDegraded {
+  background: var(--danger, #ef4444);
+}
+
+.timelineDotRestored {
+  background: var(--accent, #3b82f6);
+}
+
+.timelineLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* Track attachments table */
+.attachTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.attachTable th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.4rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.attachTable td {
+  padding: 0.2rem 0.4rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+  word-break: break-all;
+  vertical-align: top;
+}
+
+.attachTable tr:nth-child(even) td {
+  background: var(--bg-secondary);
+}
+
+.filterInput {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  min-width: 220px;
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.filterCount {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}

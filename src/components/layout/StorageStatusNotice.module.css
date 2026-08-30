@@ -1,0 +1,68 @@
+.notice {
+  border: 1px solid color-mix(in srgb, var(--warning, #d97706) 45%, var(--border-light));
+  background: color-mix(in srgb, var(--warning, #d97706) 8%, transparent);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.title {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--warning, #d97706);
+}
+
+.body {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.problems {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.error {
+  margin: 0.45rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--danger);
+  word-break: break-word;
+}
+
+.config {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.6rem;
+  margin: 0.55rem 0 0;
+  font-size: 0.7rem;
+}
+
+.config dt {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.config dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.hint code {
+  font-size: 0.68rem;
+}

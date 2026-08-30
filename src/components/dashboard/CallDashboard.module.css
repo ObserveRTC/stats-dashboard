@@ -1,0 +1,359 @@
+/* Layout for the call quality dashboard.
+   Component look comes from the Nocturne classes in styles/nocturne.css;
+   this file only positions them. */
+
+/* Same container as the individual client report (ClientPage.module.css):
+   1200px wide, centred, sitting inside the app layout's own padding. */
+.root {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* One column of cards, top to bottom. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* ── stat cards ─────────────────────────────────────────── */
+
+/* auto-fit rather than a fixed count: the card set grew from five to six and
+   will grow again, and a hard-coded column count silently squashes the last
+   one instead of wrapping it. */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .statGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.statKicker {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.statInfo {
+  cursor: help;
+  opacity: 0.5;
+  font-size: 9px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statValue {
+  font-family: var(--font-heading);
+  font-size: 25px;
+  line-height: 1.1;
+}
+
+.statUnit {
+  font-size: 13px;
+  opacity: 0.55;
+  margin-left: 3px;
+}
+
+/* ── section headers ────────────────────────────────────── */
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.legend {
+  display: flex;
+  gap: var(--space-3);
+  font-size: 11px;
+  opacity: 0.75;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  margin-right: 5px;
+}
+
+.emptyNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+/* ── SFU topology ───────────────────────────────────────── */
+
+.topologyScroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.topologyCanvas {
+  position: relative;
+}
+
+.topologySvg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.pipeDot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--color-accent-400);
+  cursor: help;
+  box-shadow: 0 0 0 3px var(--color-accent-900);
+}
+
+.sfuLabel {
+  position: absolute;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sfuLabelId {
+  font-family: var(--font-heading);
+  opacity: 0.85;
+}
+
+.routerBox {
+  position: absolute;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.routerBoxId {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routerBoxRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.routerBoxRow span:first-child {
+  opacity: 0.6;
+}
+
+.topologyKey {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.topologyKeyLine {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 1.5px dashed var(--color-accent-400);
+}
+
+/* ── tables ─────────────────────────────────────────────── */
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.rowTag {
+  margin-left: 6px;
+}
+
+.quality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+}
+
+.trendBar {
+  width: 4px;
+  border-radius: 1px;
+}
+
+.clientCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── diagnostics ────────────────────────────────────────── */
+
+/* Full-width card, so the checks sit side by side when there is room. */
+.diagList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.diagItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diagRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diagButton {
+  flex: 1;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.diagDetail {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.diagFooter {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── call facts ─────────────────────────────────────────── */
+
+.factGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.factGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.factGroupTitle {
+  margin: 0;
+}
+
+.factList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+/* Label left, value right, so a column of facts scans down its own edge. */
+.factRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.factLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.factValue,
+.factValueWarn {
+  font-size: 12px;
+  margin: 0;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.factValueWarn {
+  color: var(--quality-fair);
+}
+
+/* ── client load ───────────────────────────────────── */
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.loadHint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.loadError {
+  font-size: 11px;
+  color: var(--quality-poor);
+}
+
+/* The dot that marks a cell whose number came from the client's own
+   stats rather than from the call summary. */
+.livePip {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--quality-good);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.cardHeadActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

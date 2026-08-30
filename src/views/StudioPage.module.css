@@ -1,0 +1,50 @@
+.wrapper {
+  max-width: 76rem;
+  margin: 0 auto 1rem;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.verifyBtn {
+  background: var(--card-bg);
+  color: var(--accent);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.verifyBtn:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card-bg));
+  border-color: var(--accent);
+}

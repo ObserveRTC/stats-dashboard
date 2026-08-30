@@ -1,0 +1,115 @@
+.roleBadge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: white;
+  margin-right: 0.35rem;
+  background: var(--accent);
+}
+
+.roleBadge[data-role="consuming"] {
+  background: var(--success);
+}
+
+.roleBadge[data-role="producing"] {
+  background: var(--accent);
+}
+
+.hybridBadge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: white;
+  margin-right: 0.35rem;
+  background: var(--violet, #7c3aed);
+}
+
+.label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.chartsSection {
+  margin-top: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+
+.infoNote {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  border-radius: 4px;
+}
+
+.issueNote {
+  font-size: 0.7rem;
+  color: var(--warning);
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border-radius: 4px;
+}
+
+@media (max-width: 600px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── SFU-side data channel tables (ServerDataChannelsSection) ───────────── */
+
+.subHeading {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.subHeading:first-child {
+  margin-top: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  white-space: nowrap;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}

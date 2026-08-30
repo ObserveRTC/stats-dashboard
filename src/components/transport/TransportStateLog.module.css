@@ -1,0 +1,230 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-light) 55%, transparent);
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.offset {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-muted);
+}
+
+.channel {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.fromState {
+  color: var(--text-muted);
+}
+
+.arrow {
+  color: var(--text-muted);
+}
+
+.toState {
+  font-weight: 600;
+}
+
+.marker {
+  font-weight: 600;
+}
+
+.detail {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.initialMark {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.footnote {
+  margin: 0.5rem 0 0;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Which end of the transport reported a row. The two ends are peers of one
+   negotiation and each only sees its own half, so the tag is load-bearing. */
+.source {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  white-space: nowrap;
+}
+
+.sourceSfu {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.sourceClient {
+  background: color-mix(in srgb, #f97316 18%, transparent);
+  color: #f97316;
+}
+
+/* Channel identity, repeated as a dot so the wash is not the only cue —
+   an 8% tint is easy to lose on a bright display. */
+.channelDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.payload {
+  max-width: 30rem;
+}
+
+/* Payload fields as labelled chips rather than one run-on string: an event
+   carries a handful of named values, and a comma-separated line makes the
+   reader parse what the layout can just show. */
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.25rem;
+}
+
+.field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  max-width: 100%;
+}
+
+.fieldKey {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.fieldValue {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.64rem;
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* Per-channel filters above the table. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 0.18rem 0.4rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.filter:hover {
+  background: var(--hover-bg, var(--border-light));
+}
+
+/* An unticked channel stays legible — it is a control, not disabled text. */
+.filterOff {
+  opacity: 0.5;
+}
+
+.checkbox {
+  margin: 0;
+  width: 11px;
+  height: 11px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.filterCount {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--border-light);
+  border-radius: 8px;
+  padding: 0 0.28rem;
+}
+
+.showAll {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.18rem 0.2rem;
+}
+
+.showAll:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  margin: 0;
+  padding: 0.6rem 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}

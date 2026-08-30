@@ -1,0 +1,104 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  margin-bottom: 0.4rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.chart {
+  width: 100%;
+  position: relative;
+}
+
+.vpSection {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.vpHeader {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+.vpChart {
+  width: 100%;
+  min-height: 20px;
+}
+
+.hoverTooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  transition: opacity 0.12s ease;
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.ttHeader {
+  font-weight: 600;
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+  color: var(--text-primary);
+}
+
+.ttType {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ttRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.ttRow span {
+  color: var(--text-muted);
+}
+
+.ttRow strong {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ttHint {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-light);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+}

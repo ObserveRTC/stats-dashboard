@@ -1,0 +1,266 @@
+.lede {
+  margin: 0 0 0.6rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(9rem, 13rem) 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.listWrap {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--section-bg, var(--card-bg));
+}
+
+.navBtn {
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.05rem 0.35rem;
+}
+
+.navBtn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.navBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.counter {
+  flex: 1;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  max-height: 18rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.45rem;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-light) 55%, transparent);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.66rem;
+  color: var(--text);
+}
+
+.row:hover {
+  background: var(--hover-bg, var(--border-light));
+}
+
+.rowSelected {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.rowTime {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rowScore {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowCount {
+  margin-left: auto;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.detail {
+  min-width: 0;
+}
+
+.detailHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.detailTime {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.detailScore,
+.detailPoints {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.detailPoints {
+  color: var(--danger);
+}
+
+.caveat {
+  margin: 0 0 0.5rem;
+  font-size: 0.64rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.reasonList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.reason {
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 0.35rem 0.5rem;
+}
+
+.reasonHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.originDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.reasonLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.reasonKey {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.reasonPoints {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.reasonFrom {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.66rem;
+  color: var(--text);
+}
+
+.reasonOrigin {
+  color: var(--text-muted);
+}
+
+.reasonMeaning {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ledeCount {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* A sample that raised nothing is still listed — the correspondence with the
+   chart depends on it — but it should not compete with the ones that did. */
+.rowQuiet {
+  opacity: 0.55;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.checkbox {
+  margin: 0;
+  width: 10px;
+  height: 10px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.reasonLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.reasonLink:hover {
+  text-decoration: underline;
+}
+
+.linkIcon {
+  opacity: 0.7;
+  flex-shrink: 0;
+}

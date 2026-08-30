@@ -1,0 +1,228 @@
+# Build the container image and publish it to Docker Hub as
+# `observertc/stats-dashboard`.
+#
+# ## Why this builds twice and pushes once
+#
+# The image is published for both `linux/amd64` and `linux/arm64` — Apple
+# Silicon laptops and Graviton/Ampere nodes both want arm64, and emulating it
+# at `docker run` time is slow enough to notice.
+#
+# The obvious way to get two architectures is one job with QEMU emulation. That
+# does not work well here, because this Dockerfile does real work: `npm ci`, a
+# typecheck, the whole test suite and a Next.js production build. Under QEMU
+# that runs at roughly a fifth of native speed, which turns a few minutes into
+# most of an hour and risks the runner's memory limit during the build.
+#
+# So each architecture is built on a runner of its own architecture, natively
+# and in parallel. Neither job tags anything; each pushes an untagged image and
+# reports back the digest it produced. A final job stitches those digests into
+# one multi-architecture tag. This is Docker's documented pattern for exactly
+# this situation, and the cost of it is the extra `merge` job below.
+#
+# ## What you need configured
+#
+# Two repository secrets, under Settings → Secrets and variables → Actions:
+#
+#   DOCKERHUB_USERNAME  a Docker Hub account with push rights on the
+#                       `observertc` organisation
+#   DOCKERHUB_TOKEN     an access token from that account
+#                       (Docker Hub → Account settings → Personal access
+#                       tokens), scoped Read & Write. Not the account password:
+#                       a token can be revoked on its own and does not unlock
+#                       the account if it leaks.
+name: Docker image
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Extra tag to publish (e.g. 1.4.0)'
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: observertc/stats-dashboard
+
+jobs:
+  # ── one native build per architecture ─────────────────────────────────────
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          # Free for public repositories. On a private repo this label does not
+          # resolve — swap it for `ubuntu-latest` and add
+          # `docker/setup-qemu-action@v3` before the buildx step, accepting the
+          # emulated build time described at the top of this file.
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # `linux/amd64` → `linux-amd64`, for artifact names, which cannot hold a
+      # slash.
+      - name: Name this platform
+        run: echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+        env:
+          platform: ${{ matrix.platform }}
+
+      - name: Fail early if the registry credentials are missing
+        # The login action's own error for an empty secret is unhelpful, and it
+        # arrives after the build has already run.
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "::error::DOCKERHUB_USERNAME and DOCKERHUB_TOKEN must be set as repository secrets."
+            echo "::error::Create an access token at Docker Hub → Account settings → Personal access tokens (Read & Write)."
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Labels only at this stage. Tags belong to the merged manifest, not to
+      # either half of it.
+      - name: Derive labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.vendor=ObserveRTC
+            org.opencontainers.image.title=observertc-stats
+            org.opencontainers.image.url=https://observertc.org/
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # No credentials are ever passed as build args. The only build-time
+          # value the image takes is the API base URL, whose default (empty,
+          # meaning same origin) is what a normal deployment wants.
+          #
+          # `push-by-digest` uploads the layers without claiming a tag, so
+          # neither architecture briefly becomes `:latest` on its own.
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          # Attestations are disabled because Docker Hub lists each one as an
+          # extra `unknown/unknown` entry on the tags page of a public image,
+          # which reads as a broken build to anyone browsing it. Set this to
+          # `mode=max` if you would rather have SLSA provenance than a tidy
+          # tags page.
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
+      - name: Record the digest
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${{ steps.build.outputs.digest }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ── stitch the two into one multi-arch tag ────────────────────────────────
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+
+      # One manifest list per tag, pointing at both architectures' digests.
+      - name: Create the multi-arch tags
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Confirm what was published
+        run: |
+          docker buildx imagetools inspect "${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Pushed to Docker Hub"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Pull it with:"
+            echo
+            echo '```'
+            echo "docker pull ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Docker Hub shows an empty page for an image with no description, which
+      # is a poor first impression for a public image. This mirrors the README
+      # onto it. Left commented out because it is a third-party action and it
+      # receives the Docker Hub token — enable it only if you are content with
+      # that. `peter-evans/dockerhub-description` is widely used; pin it to a
+      # commit SHA rather than a tag if you want the stronger guarantee.
+      #
+      # - name: Sync the Docker Hub description
+      #   uses: peter-evans/dockerhub-description@v4
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #     repository: ${{ env.IMAGE_NAME }}
+      #     short-description: ${{ github.event.repository.description }}

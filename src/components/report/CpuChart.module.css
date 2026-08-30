@@ -1,0 +1,111 @@
+.cpuContainer {
+  background: var(--timeline-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+}
+
+.cpuScreenshotBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.cpuContainer:hover .cpuScreenshotBtn {
+  opacity: 0.6;
+}
+
+.cpuScreenshotBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
+.cpuPinBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.cpuContainer:hover .cpuPinBtn {
+  opacity: 0.6;
+}
+
+.cpuPinBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
+.cpuPinBtnActive {
+  opacity: 1 !important;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.cpuTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+
+.cpuTitle {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cpuInfoIcon {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.cpuLegend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.cpuLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.cpuLegendSwatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.cpuLegendLine {
+  display: inline-block;
+  width: 12px;
+  height: 0;
+  border-top: 1.5px dashed #6b7280;
+  vertical-align: middle;
+}
+
+/* Whole-client rollups (total send/recv bitrate, active streams). */
+.rollupGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

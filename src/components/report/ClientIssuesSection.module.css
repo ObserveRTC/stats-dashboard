@@ -1,0 +1,327 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+
+.timelineLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 160px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timelineTrack {
+  flex: 1;
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.trackLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-light);
+}
+
+/* An issue reported at a single moment — nothing to span. */
+.trackDot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  cursor: default;
+  border: 1.5px solid var(--card-bg);
+}
+
+/* Raised and never closed: hollow, so it reads as unfinished. The border colour
+   is set inline from the issue's own colour, since there is no fill to carry it. */
+.trackDotOpen {
+  composes: trackDot;
+  background: transparent;
+  border-width: 2px;
+  border-style: dashed;
+}
+
+/* Raise → resolution, drawn as the span it is. */
+.trackBar {
+  position: absolute;
+  height: 8px;
+  min-width: 3px;
+  border-radius: 4px;
+  cursor: default;
+  opacity: 0.75;
+}
+
+.trackBar:hover {
+  opacity: 1;
+}
+
+/* The cap marking where the client said the issue cleared. */
+.barEnd {
+  position: absolute;
+  right: -1px;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--success);
+}
+
+.lede {
+  margin: 0 0 0.75rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Accordion */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.accordionItem {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.accordionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--section-bg, var(--card-bg));
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  text-align: left;
+}
+
+.accordionHeader:hover {
+  background: var(--hover-bg, var(--border-light));
+}
+
+.accordionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.accordionType {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accordionCount {
+  font-size: 11px;
+  background: var(--border-light);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.chevronOpen {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transform: rotate(90deg);
+}
+
+.accordionBody {
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--card-bg);
+}
+
+.issueRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.issueTs {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.issuePayload {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text);
+  background: var(--code-bg, var(--border-light));
+  border-radius: 4px;
+  padding: 4px 8px;
+  overflow-x: auto;
+  max-height: 120px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Hover card on a timeline marker — the issue payload, one hover away. */
+.hoverCard {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 30rem;
+  max-height: 22rem;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color, var(--border));
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.hoverHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.hoverDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.hoverType {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hoverTs {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.hoverPayload {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-muted);
+  max-height: 17rem;
+  overflow: hidden;
+}
+
+.hoverEmpty {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.hoverKey {
+  margin-bottom: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+
+/* ── resolution state, in the hover card and the accordion ── */
+
+.hoverState {
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+}
+
+.stateResolved {
+  color: var(--success);
+}
+
+.stateOpen {
+  color: var(--warning, #d97706);
+}
+
+.statePoint {
+  color: var(--text-muted);
+}
+
+/* The client's own account of why the issue cleared. */
+.hoverComment {
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.accordionKey {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.typeMeaning {
+  margin: 0 0 0.4rem;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.issueBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.issueState {
+  display: block;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.issueComment {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--success);
+}
+
+/* Payload attached to the resolution — distinct from the raise, because 4.6.0
+   sends only what was passed to the resolution, never a repeat of the raise. */
+.issuePayloadResolve {
+  composes: issuePayload;
+  border-left: 2px solid var(--success);
+}

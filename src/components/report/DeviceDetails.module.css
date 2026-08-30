@@ -1,0 +1,118 @@
+.browserInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.browserMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.browserName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.browserOs {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.uaDetails {
+  font-size: 0.65rem;
+}
+
+.uaSummary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  user-select: none;
+}
+
+.uaSummary:hover {
+  color: var(--accent);
+}
+
+.userAgent {
+  display: block;
+  font-size: 0.6rem;
+  word-break: break-all;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  line-height: 1.5;
+}
+
+/* Devices */
+.deviceGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.deviceGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.deviceGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.deviceGroupLabel {
+  color: var(--text-primary);
+}
+
+.deviceGroupCount {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--info-card-bg);
+  border-radius: 8px;
+  padding: 0 5px;
+}
+
+.deviceList {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 0.7rem;
+}
+
+.deviceItem {
+  padding: 0.1rem 0 0.1rem 1.2rem;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.deviceItem::before {
+  content: '›';
+  position: absolute;
+  left: 0.4rem;
+  color: var(--text-muted);
+}
+
+/* Constraints */
+.constraintTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.constraintTag {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--info-card-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  white-space: nowrap;
+}

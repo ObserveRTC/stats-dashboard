@@ -1,0 +1,121 @@
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 620px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.statColumn {
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  background: var(--info-card-bg);
+  border: 1px solid var(--border-light);
+}
+
+.statColumnTitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.statRows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.statRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+}
+
+.statRow[title] {
+  cursor: help;
+}
+
+.statRowLabel {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.statRowValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.statUnit {
+  font-size: 0.65rem;
+  font-weight: 400;
+  margin-left: 1px;
+  opacity: 0.7;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-light);
+  font-size: 0.72rem;
+  color: var(--text-secondary, var(--text-muted));
+}
+
+/* ── headline cards above the detail columns ─────────────────────────────── */
+
+.cardRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.statCard {
+  text-align: center;
+  padding: 0.4rem 0.3rem;
+  border-radius: 6px;
+  background: var(--info-card-bg);
+  border: 1px solid var(--border-light);
+}
+
+.statCard[title] {
+  cursor: help;
+}
+
+.statCardLabel {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statCardValue {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}

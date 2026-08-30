@@ -1,0 +1,120 @@
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Hover tooltip — score plus the client's own explanation for it. */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color, var(--border));
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary, var(--text));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  max-width: 22rem;
+  white-space: normal;
+}
+
+.reasons {
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0 0 1.1rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  list-style: disc;
+}
+
+.reasons li {
+  margin-bottom: 0.1rem;
+}
+
+/* ── headline layout (used when the chart leads the client report) ───────── */
+
+/* Lives inside a tab panel, which already provides the frame. */
+.wrap {
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.latest {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.latestUnit {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 0.1rem;
+}
+
+.header .legend {
+  margin-left: auto;
+  margin-bottom: 0;
+}
+
+.hint {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Reasons in the hover, grouped by the component that raised them. */
+.reasonGroup {
+  margin-top: 0.35rem;
+}
+
+.reasonEntity {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.reasonPoints {
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.reasonEmpty {
+  margin-top: 0.3rem;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.reasonHint {
+  margin-top: 0.4rem;
+  font-size: 0.62rem;
+  color: var(--accent);
+}

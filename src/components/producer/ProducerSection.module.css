@@ -1,0 +1,115 @@
+.kindBadge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: white;
+  margin-right: 0.35rem;
+}
+
+.kindBadge[data-kind="video"] {
+  background: var(--accent);
+}
+
+.kindBadge[data-kind="audio"] {
+  background: var(--success);
+}
+
+.label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.chartsSection {
+  margin-top: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+
+@media (max-width: 600px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.layersSection {
+  margin-top: 0.5rem;
+}
+
+.scoreBadge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
+
+.layerInfo {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.infoNote {
+  font-size: 0.7rem;
+  color: var(--warning);
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border-radius: 4px;
+}
+
+.layerCompareTable {
+  width: 100%;
+  font-size: 0.7rem;
+  border-collapse: collapse;
+}
+
+.layerCompareTable th,
+.layerCompareTable td {
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.layerCompareTable th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.layerCompareTable td {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subsection heading plus its actions (CSV export), mirroring the icon row a
+   CollapsibleSection header carries. The layer heading is optional, so the row
+   still aligns its button right when there is no title beside it. */
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.sectionTitleRow .sectionTitle {
+  margin-bottom: 0;
+  margin-right: auto;
+}

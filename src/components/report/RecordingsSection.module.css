@@ -1,0 +1,338 @@
+.placeholder {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.summary {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.hybridBadge {
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: var(--info-card-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+  margin-left: 0.2rem;
+}
+
+.timelineWrap {
+  position: relative;
+  width: 100%;
+}
+
+.timeline {
+  position: relative;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.timelineWrap:hover .timelineScreenshotBtn {
+  opacity: 0.65;
+}
+
+.timelineScreenshotBtn {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 10;
+}
+
+.timelineStateCaption {
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border-top: 1px solid var(--border-light);
+  background: var(--card-bg);
+  font-size: 0.6rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.timelineStateCaptionTitle {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.timelineStateRow {
+  margin-bottom: 0.2rem;
+}
+
+.timelineStateRow:last-child {
+  margin-bottom: 0;
+}
+
+.timelineStateLabel {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 0.35rem;
+}
+
+.timelineStateValue {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.timelineCaptionLegend {
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.timelineCaptionLegendItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.startTrackTimestampsWrap {
+  position: relative;
+  margin-bottom: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--card-bg);
+}
+
+.startTrackTimestampsWrap:hover .startTrackTimestampsScreenshotBtn {
+  opacity: 0.65;
+}
+
+.startTrackTimestampsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.startTrackTimestampsTitle {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.2rem;
+}
+
+.startTrackTimestampsMeta {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.startTrackTimestampsMeta strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.startTrackTimestampsArchiveId {
+  font-family: ui-monospace, monospace;
+  font-size: 0.6rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.startTrackTimestampsScreenshotBtn {
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.startTrackFieldHints {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.startTrackFieldHintRow {
+  margin-bottom: 0.12rem;
+}
+
+.startTrackFieldHintRow strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+}
+
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--tooltip-bg, #1e293b);
+  color: var(--tooltip-text, #f1f5f9);
+  font-size: 0.65rem;
+  line-height: 1.5;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 100;
+  transition: opacity 0.15s;
+  max-width: 320px;
+  word-break: break-all;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.6rem;
+}
+
+.producerCard {
+  background: var(--info-card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  /* Button reset */
+  appearance: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.08s;
+}
+
+.producerCard:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--info-card-bg));
+}
+
+.producerCard:active {
+  transform: translateY(1px);
+}
+
+.producerCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.producerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.metaLabel {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.producerId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.openHint {
+  font-size: 0.6rem;
+  color: var(--accent);
+  margin-top: 0.1rem;
+  opacity: 0.75;
+}
+
+.producerCard:hover .openHint {
+  opacity: 1;
+}
+
+.producerHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.producerLabel {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.producerKind {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.recEntry {
+  border-left: 3px solid var(--border-light);
+  padding-left: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.recTake {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.takeId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.65rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.recTime {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recDuration {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.chartsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.chartRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.4rem;
+}

@@ -1,0 +1,197 @@
+.container {
+  background: var(--timeline-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  position: relative;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0.15rem;
+}
+
+.title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.seriesLegend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: 0.35rem;
+}
+
+.seriesLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.seriesLegendSwatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.infoIcon {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  cursor: help;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0 1px;
+  border-radius: 3px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.infoIcon:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.pinBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.container:hover .pinBtn {
+  opacity: 0.6;
+}
+
+.pinBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
+.pinBtnActive {
+  opacity: 1 !important;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.actionSpacer {
+  margin-left: auto;
+}
+
+.screenshotBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.container:hover .screenshotBtn {
+  opacity: 0.6;
+}
+
+.screenshotBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
+.chartArea {
+  width: 100%;
+  height: 80px;
+  position: relative;
+}
+
+.containerCompact {
+  padding: 0.28rem 0.38rem;
+  border-radius: 5px;
+}
+
+.containerCompact .title {
+  font-size: 0.64rem;
+}
+
+.containerCompact .seriesLegend {
+  gap: 0.3rem;
+  margin-left: 0.2rem;
+}
+
+.containerCompact .seriesLegendItem {
+  font-size: 0.54rem;
+}
+
+.containerCompact .seriesLegendSwatch {
+  width: 7px;
+  height: 7px;
+}
+
+.containerCompact .titleRow {
+  margin-bottom: 0.1rem;
+}
+
+.chartAreaCompact {
+  height: 56px;
+}
+
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  white-space: nowrap;
+  transition: opacity 0.1s ease;
+}
+
+.tooltipRich {
+  white-space: normal;
+  max-width: 280px;
+}
+
+.infoTooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  max-width: 280px;
+  white-space: normal;
+}
+
+/* Per-point note in the crosshair tooltip — score reasons and the like. */
+.tooltipNote {
+  display: block;
+  margin-top: 0.2rem;
+  padding-top: 0.2rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 22rem;
+}

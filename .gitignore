@@ -1,0 +1,55 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+
+# Next.js build output
+/.next
+/out
+next-env.d.ts
+
+# Production build artifacts
+/build
+/dist
+
+# Environment — real values never belong in the repository.
+# `.env.example` is deliberately not ignored: it is the documentation.
+.env
+.env.local
+.env.*.local
+*.local
+
+# Testing
+/coverage
+/.nyc_output
+
+# TypeScript incremental build
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# One package manager. `npm ci` in the Dockerfile reads package-lock.json, and
+# a second lockfile silently disagreeing with it is a bad afternoon.
+yarn.lock
+pnpm-lock.yaml
+
+# Editors and OS
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Scratch
+.tmp
+.temp
+tmp/
+_release-cleanup/

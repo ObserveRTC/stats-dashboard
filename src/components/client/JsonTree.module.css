@@ -1,0 +1,103 @@
+/* All nodes use the same monospace font */
+.node,
+.line {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.7;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0;
+  min-width: 0;
+  cursor: default;
+}
+
+/* Clickable lines (object/array openers) */
+.node > .line {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+  margin: 0 -2px;
+}
+
+.node > .line:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Indented children block */
+.children {
+  padding-left: 1.4em;
+  border-left: 1px solid var(--border-light);
+  margin-left: 0.35em;
+}
+
+/* Toggle chevron button */
+.toggleBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.toggleBtn:hover {
+  color: var(--accent);
+}
+
+.chevron {
+  transition: transform 0.15s ease;
+  transform: rotate(0deg);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+/* Key */
+.key {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Punctuation */
+.punct {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Brackets */
+.bracket {
+  color: var(--text-secondary);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.closeBracket {
+  color: var(--text-secondary);
+  font-weight: 600;
+  flex-shrink: 0;
+  padding-left: 0;
+}
+
+/* Collapsed preview */
+.preview {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.68rem;
+  margin: 0 0.35em;
+}
+
+/* Value types */
+.string  { color: #c0392b; }
+.number  { color: #2471a3; }
+.bool    { color: #1e8449; }
+.null    { color: var(--text-muted); font-style: italic; }
+
+[data-theme="dark"] .string  { color: #f1948a; }
+[data-theme="dark"] .number  { color: #85c1e9; }
+[data-theme="dark"] .bool    { color: #58d68d; }

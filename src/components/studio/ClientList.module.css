@@ -1,0 +1,165 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.row:hover {
+  background: var(--hover-bg);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.timelineLabel {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--accent);
+  min-width: 24px;
+}
+
+.displayName {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.pidCode {
+  font-size: 0.65rem;
+  background: var(--bg-tertiary);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.reportTypeLabel {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.loadedDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success, #10b981);
+  flex-shrink: 0;
+}
+
+.journey {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.stint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stintDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.stintRegion {
+  font-weight: 600;
+}
+
+.arrow {
+  color: var(--text-muted);
+  margin: 0 0.15rem;
+}
+
+.noSfu {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.smallBtn {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.smallBtn:hover {
+  background: var(--hover-bg);
+}
+
+.loadBtn {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid var(--btn-primary-border);
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.loadBtn:hover {
+  background: var(--btn-primary-bg-hover);
+}
+
+.loadBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dlLink {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.dlLink:hover {
+  background: var(--hover-bg);
+  text-decoration: none;
+}

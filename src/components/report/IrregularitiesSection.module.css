@@ -1,0 +1,243 @@
+/* ── wrapper ─────────────────────────────────────────── */
+.body {
+  padding: 0 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── sub-heading ─────────────────────────────────────── */
+.subHeading {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 0.4rem;
+}
+
+/* ── unmatched track table ───────────────────────────── */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-family: ui-monospace, monospace;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--hover-bg);
+}
+
+/* ── badges ──────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeOrphan {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  color: #f59e0b;
+  border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
+}
+
+.badgeUnlinked {
+  background: color-mix(in srgb, #6b7280 15%, transparent);
+  color: #6b7280;
+  border: 1px solid color-mix(in srgb, #6b7280 30%, transparent);
+}
+
+.badgeAudio {
+  background: color-mix(in srgb, #10b981 15%, transparent);
+  color: #10b981;
+  border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+}
+
+.badgeVideo {
+  background: color-mix(in srgb, #3b82f6 15%, transparent);
+  color: #3b82f6;
+  border: 1px solid color-mix(in srgb, #3b82f6 30%, transparent);
+}
+
+/* ── issues timeline ─────────────────────────────────── */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 0.75rem;
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+
+.timelineLabel {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  width: 180px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timelineTrack {
+  flex: 1;
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.trackLine {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.trackDot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  cursor: default;
+  border: 1.5px solid var(--card-bg);
+}
+
+/* ── issues accordion ────────────────────────────────── */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.accordionItem {
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.accordionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  background: var(--card-bg);
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.accordionHeader:hover {
+  background: var(--hover-bg);
+}
+
+.accordionDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.accordionType {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accordionCount {
+  font-size: 0.6rem;
+  background: var(--border-light);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 1px 6px;
+}
+
+.chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.chevronOpen {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transform: rotate(90deg);
+}
+
+.accordionBody {
+  padding: 5px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-secondary);
+}
+
+.issueRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.68rem;
+}
+
+.issueTs {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: ui-monospace, monospace;
+  padding-top: 2px;
+}
+
+.issuePayload {
+  margin: 0;
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  padding: 3px 7px;
+  overflow-x: auto;
+  max-height: 100px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: ui-monospace, monospace;
+}

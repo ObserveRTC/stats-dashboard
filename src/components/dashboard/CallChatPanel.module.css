@@ -1,0 +1,89 @@
+/* Styles for <CallChatPanel>, which is currently not mounted on the call page
+   — the panel is kept self-contained so it can be dropped back in as a card
+   without touching the dashboard's own layout stylesheet. */
+
+.panel {
+  gap: var(--space-3);
+  max-height: 520px;
+}
+
+.chatLog {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-right: 2px;
+  min-height: 120px;
+}
+
+.chatRow {
+  max-width: 88%;
+}
+
+.chatBubble {
+  padding: 8px 11px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.chatBubbleUser {
+  background: var(--color-accent-800);
+  color: var(--color-accent-100);
+}
+
+.chatBubbleAgent {
+  background: color-mix(in srgb, var(--color-text) 6%, var(--color-surface));
+  color: var(--color-text);
+}
+
+.typing {
+  align-self: flex-start;
+  padding: 8px 11px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-text) 6%, var(--color-surface));
+  display: flex;
+  gap: 4px;
+}
+
+.typingDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-neutral-400);
+  animation: typingDot 1.2s infinite;
+}
+
+.typingDot:nth-child(2) { animation-delay: 0.15s; }
+.typingDot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typingDot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}
+
+.quickPrompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quickPrompt {
+  cursor: pointer;
+  border: 1px solid var(--color-divider);
+  color: var(--color-text);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+}
+
+.quickPrompt:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.chatComposer {
+  display: flex;
+  gap: var(--space-2);
+}

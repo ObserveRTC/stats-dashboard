@@ -1,0 +1,13 @@
+.table { width: 100%; border-collapse: collapse; font-size: 0.73rem; }
+.th { padding: 0.3rem 0.6rem; text-align: left; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border-light); }
+.td { padding: 0.3rem 0.6rem; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); vertical-align: top; }
+.tr:hover .td { background: var(--hover-bg); }
+.infoRow { display: flex; gap: 0.4rem; font-size: 0.75rem; }
+.label { color: var(--text-muted); font-weight: 500; flex-shrink: 0; }
+.chartsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+.typeBadge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 0.62rem; font-weight: 600; }
+.typeHost  { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.typeSrflx { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.typeRelay { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+.typeOther { background: var(--bg-tertiary); color: var(--text-muted); }
+.scoreBadge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 0.62rem; font-weight: 600; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); margin-left: 0.35rem; }

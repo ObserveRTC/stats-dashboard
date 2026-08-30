@@ -1,0 +1,204 @@
+/* ── Summary card ───────────────────────────────────────── */
+
+.summaryGrid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 120px;
+}
+
+.summaryLabel {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.summaryValue {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: ui-monospace, monospace;
+}
+
+/* ── Router header ──────────────────────────────────────── */
+
+.routerMeta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.routerMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.routerMetaLabel {
+  color: var(--text-muted);
+}
+
+.routerMetaValue {
+  font-family: ui-monospace, monospace;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── Sub-section heading ────────────────────────────────── */
+
+.subHeading {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.6rem 1rem 0.3rem;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Table ──────────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+  padding: 0 1rem 0.75rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-family: ui-monospace, monospace;
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--hover-bg);
+}
+
+/* ── Badges ─────────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeWebrtc  { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.badgePlain   { background: color-mix(in srgb, #8b5cf6 15%, transparent); color: #8b5cf6; border: 1px solid color-mix(in srgb, #8b5cf6 30%, transparent); }
+.badgePipe    { background: color-mix(in srgb, #f59e0b 15%, transparent); color: #f59e0b; border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent); }
+.badgeDirect  { background: color-mix(in srgb, #6b7280 15%, transparent); color: #6b7280; border: 1px solid color-mix(in srgb, #6b7280 30%, transparent); }
+.badgeAudio   { background: color-mix(in srgb, #10b981 15%, transparent); color: #10b981; border: 1px solid color-mix(in srgb, #10b981 30%, transparent); }
+.badgeVideo   { background: color-mix(in srgb, #3b82f6 15%, transparent); color: #3b82f6; border: 1px solid color-mix(in srgb, #3b82f6 30%, transparent); }
+.badgeOpen    { background: color-mix(in srgb, #10b981 15%, transparent); color: #10b981; border: 1px solid color-mix(in srgb, #10b981 30%, transparent); }
+.badgeClosed  { background: color-mix(in srgb, #ef4444 15%, transparent); color: #ef4444; border: 1px solid color-mix(in srgb, #ef4444 30%, transparent); }
+
+/* ── Event history pills ────────────────────────────────── */
+
+.history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.histPill {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.histPillPause    { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #f59e0b; border-color: color-mix(in srgb, #f59e0b 30%, transparent); }
+.histPillResume   { background: color-mix(in srgb, #10b981 12%, transparent); color: #10b981; border-color: color-mix(in srgb, #10b981 30%, transparent); }
+.histPillDegrade  { background: color-mix(in srgb, #ef4444 12%, transparent); color: #ef4444; border-color: color-mix(in srgb, #ef4444 30%, transparent); }
+.histPillRestore  { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ── Attachments ────────────────────────────────────────── */
+
+.attachGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.attachEntry {
+  display: flex;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+}
+
+.attachKey {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.attachVal {
+  color: var(--text-primary);
+  font-family: ui-monospace, monospace;
+}
+
+/* ── Empty state ────────────────────────────────────────── */
+
+.empty {
+  padding: 0.75rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+/* Per-source detail in a merged call summary (client / router counts). */
+.sourceDetail {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* What the merge across SFUs had to give up. */
+.summaryNote {
+  margin: 0;
+  padding: 0 1rem 0.75rem;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}

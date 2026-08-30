@@ -1,0 +1,89 @@
+/*
+ * Underline tabs rather than folder tabs.
+ *
+ * The previous version gave the active tab its own border and a background
+ * matching the panel, which is the classic "folder" look. In dark mode that
+ * border reads as a bright outline around one item — the eye lands on the
+ * chrome instead of the label. An underline needs no border at all: the accent
+ * bar carries the selection, and the surrounding box stays quiet.
+ */
+
+.wrap {
+  margin-bottom: 1rem;
+}
+
+.tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+}
+
+.tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  /* Sit on the strip's rule so the active underline replaces it rather than
+     stacking two lines. */
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.tabActive {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.tabActive:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.badge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0.05rem 0.32rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-muted);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.tabActive .badge {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.panel {
+  /* No box of its own — the underline already says which panel is showing,
+     and a second frame here would just nest borders. */
+  min-width: 0;
+}
+
+.panel[hidden] {
+  display: none;
+}

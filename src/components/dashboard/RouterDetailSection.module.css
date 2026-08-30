@@ -1,0 +1,39 @@
+.label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.transport {
+  border-top: 1px solid var(--border-light);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.transport:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.transportHead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.transportType {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 0.08rem 0.3rem;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.openTag {
+  font-size: 0.62rem;
+  color: var(--warning, #d97706);
+}

@@ -1,0 +1,90 @@
+.kindBadge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: white;
+  margin-right: 0.35rem;
+}
+
+.kindBadge[data-kind="video"] {
+  background: var(--accent);
+}
+
+.kindBadge[data-kind="audio"] {
+  background: var(--success);
+}
+
+.label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.chartsSection {
+  margin-top: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+
+.scoreBadge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
+
+.linkId {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+
+.linkId:hover {
+  text-decoration-color: var(--accent);
+}
+
+.infoNote {
+  font-size: 0.7rem;
+  color: var(--warning);
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border-radius: 4px;
+}
+
+@media (max-width: 600px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Subsection heading plus its actions (CSV export), mirroring the icon row a
+   CollapsibleSection header carries. */
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.sectionTitleRow .sectionTitle {
+  margin-bottom: 0;
+  margin-right: auto;
+}

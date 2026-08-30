@@ -1,0 +1,39 @@
+.nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sep {
+  margin: 0 0.35rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  user-select: none;
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  border-radius: 3px;
+  padding: 0.1rem 0.25rem;
+  transition: background 0.15s;
+}
+
+.link:hover {
+  background: var(--hover-bg);
+  text-decoration: underline;
+}
+
+.current {
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: 0.1rem 0.25rem;
+}

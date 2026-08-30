@@ -1,0 +1,109 @@
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── legend / filter ────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+}
+
+/* Each entry is a real button: clicking it hides or shows that client's line,
+   and hovering it brings that line forward. */
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.6;
+  cursor: pointer;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendItem:hover {
+  border-color: var(--text-muted);
+}
+
+.legendItemOff {
+  opacity: 0.4;
+}
+
+.legendItemOff .legendSwatch {
+  background: var(--color-divider) !important;
+}
+
+.legendSwatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.legendApprox {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.legendAction {
+  font-size: 11px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  text-decoration: underline;
+}
+
+.legendAction:hover {
+  color: var(--color-text);
+}
+
+/* ── plot ───────────────────────────────────────────────── */
+
+.chart {
+  position: relative;
+  width: 100%;
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  background: var(--surface-raised, var(--color-surface));
+  border: 1px solid var(--color-divider);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+.footNote {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}

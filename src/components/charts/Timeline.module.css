@@ -1,0 +1,123 @@
+.container {
+  background: var(--timeline-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0.25rem;
+}
+
+.title {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.infoIcon {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.actionSpacer {
+  margin-left: auto;
+}
+
+.pinBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.container:hover .pinBtn {
+  opacity: 0.6;
+}
+
+.pinBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
+.pinBtnActive {
+  opacity: 1 !important;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.screenshotBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.container:hover .screenshotBtn {
+  opacity: 0.6;
+}
+
+.screenshotBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+
+.chartArea {
+  width: 100%;
+  overflow-x: auto;
+  position: relative;
+}
+
+.legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.legendColor {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  white-space: normal;
+  max-width: 320px;
+  transition: opacity 0.1s ease;
+}
