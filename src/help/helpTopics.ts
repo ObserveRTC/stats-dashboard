@@ -61,19 +61,19 @@ const CONCEPTS: HelpTopic[] = [
     what: 'A single number from 0 to 5 summarising how good a call felt, calculated in the participant’s own browser while the call was happening. 5 is flawless; 4 and above is good; 2.5 to 4 is noticeably imperfect; below 2.5 is bad enough that people complain.',
     why: 'It is the fastest way to find the person who had a bad time. Everything else on the dashboard explains *why* a score was low; the score is how you find out *who* to look at.',
     howToRead:
-      'Each thing being scored — the network connection, each video track, each audio track — starts at a perfect 5 and has points subtracted for problems that were actually measured. A score of 3 means two points’ worth of problems, and the score reasons say which. A participant’s overall score is a weighted blend of theirs.',
+      'Each thing being scored — the network connection, each video track, each audio track — starts at a perfect 5 and is reduced by the problems its own detectors actually raised. Nothing else is consulted: a score can never disagree with the issue list you are looking at. How a problem counts depends on its kind. A path that is down zeroes the connection outright; media that stopped moving *caps* the score, so two broken things are not twice as bad as one; and problems a person can hear or see *subtract*, so several mild ones add up the way they are experienced.',
     watchOut:
-      'The score describes what the browser could measure, not what the person experienced. A call can score 5 while somebody was on mute, pointing at the ceiling, or in a noisy room — none of which is visible in network statistics.',
+      'The participant’s overall score is not an average of the five things beneath it — it is their distance from a perfect call, so one collapsed dimension costs more than the same shortfall spread evenly. Scores of 5, 5 and 0 come to 2.11, not 3.33. That is deliberate: nobody whose video has died calls the call two-thirds fine. And the score describes what the browser could measure, not what the person experienced — a call can score 5 while somebody was on mute or pointing at the ceiling.',
   },
   {
     id: 'concept/score-reasons',
     title: 'Score reasons',
-    what: 'The named problems that took points off a score, each with how many points it cost — “high packet loss, −2”, “frozen video, −2”.',
-    why: 'A low score on its own tells you nothing actionable. The reasons turn “this was bad” into “this was bad *because the uplink was losing packets*”, which is a different conversation with a different fix.',
+    what: 'The named problems that took points off a score, each with how many points it cost — “sustained packet loss, −3.5”, “video flow disrupted, −4”. Each name is an issue, so the same string is in the issue list at that moment, on the same connection or track.',
+    why: 'A low score on its own tells you nothing actionable. The reasons turn “this was bad” into “this was bad *because the uplink was losing packets*”, which is a different conversation with a different fix. And because a reason is an issue, it comes with the evidence the detector used.',
     howToRead:
       'Rank by points, not by how often a reason appeared. A reason that fired once and cost 5 points ruined the call; one that fired constantly for 0.2 points each time is background noise. Reasons are attributed to the specific connection or track that raised them, so you can tell a bad network from one bad camera.',
     watchOut:
-      'Recordings made by older client software carry the reason names without the points. Where that is the case the dashboard ranks by frequency instead and says so, rather than inventing magnitudes it does not have.',
+      'The points rank the reasons; they do not add up to the score. A connectivity problem zeroes its connection outright and a broken pipeline caps rather than subtracts, so a tick with two of those records what each *would* have cost, not what both did. Each entity’s own score is the authority on what it actually reached. Recordings from client software older than 4.9.0 also carry reason names the current library no longer emits; the dashboard says so rather than treating them as current.',
   },
   {
     id: 'concept/rtt',
@@ -81,7 +81,7 @@ const CONCEPTS: HelpTopic[] = [
     what: 'How long a packet takes to get to the other end and back, in milliseconds. Essentially the physical and routing distance between the participant and the server.',
     why: 'It sets the floor on how conversational a call can feel. You cannot talk naturally over a long delay — people talk over each other, then over-correct and leave silences.',
     howToRead:
-      'Under 100 ms is comfortable and most people never notice it. 150 ms is where turn-taking starts to feel slightly off. Above 300 ms conversation genuinely breaks down, and this is where the score penalty doubles.',
+      'Under 100 ms is comfortable and most people never notice it. 150 ms is where turn-taking starts to feel slightly off. Above 300 ms conversation genuinely breaks down. A round trip that stays degraded raises its own issue rather than being scored from a threshold — look for “round trip degraded” on the connection.',
     watchOut:
       'A high RTT is often just geography — someone genuinely far from the server — and no amount of debugging will fix it. Check whether the connection was relayed through a TURN server first; that adds a detour and is fixable.',
   },
@@ -99,11 +99,11 @@ const CONCEPTS: HelpTopic[] = [
     id: 'concept/packet-loss',
     title: 'Packet loss',
     what: 'The share of packets that never arrived. Measured per interval, so it describes the network right now rather than averaged over the whole call.',
-    why: 'It is the single most damaging thing that can happen to a call, and it carries the heaviest score penalty available — enough on its own to take a connection from perfect to zero.',
+    why: 'It is one of the most damaging things that can happen to a call, and sustained loss takes 3.5 of the 5 points off the connection carrying it.',
     howToRead:
-      'Below 1% is normal and inaudible; audio codecs conceal it. 1–5% is noticeable. Above 5% is bad, and above 20% the call is effectively broken. Look at whether one stream or all of them are affected: one is a track problem, all of them is the network.',
+      'Below 1% is normal and inaudible; audio codecs conceal it. 1–5% is noticeable. Above 5% is bad, and above 20% the call is effectively broken. Loss belongs to the *connection*, not to any one stream — every stream riding the path shares it — so it is counted once, there. What the same loss actually did differs per stream, and that is what the track issues say: 2% is inaudible on an audio stream with error concealment and very visible on video without it.',
     watchOut:
-      'A percentile such as p95 is more informative than an average here. Loss that matters comes in bursts, and one terrible minute inside a good hour disappears into an average while a p95 still shows it.',
+      'Loss alone is not the whole story, in either direction. A session can measure almost no loss and still be full of audible damage from late arrivals and buffer underruns — read the audio issues on the tracks, not just the loss figure. And a percentile such as p95 is more informative than an average: loss that matters comes in bursts, and one terrible minute inside a good hour disappears into an average.',
   },
   {
     id: 'concept/turn',
@@ -317,9 +317,9 @@ const CLIENT: HelpTopic[] = [
     what: 'Problems this participant’s own software detected while the call was happening — frozen video, audio dropouts, ICE disconnects, an overloaded decoder and so on. Each has a start, an end and its own evidence.',
     why: 'These are the most direct findings on the page. Rather than a metric you have to interpret, each one is a detector saying “this specific thing went wrong, here, for this long”.',
     howToRead:
-      'Duration matters more than count: one twenty-second freeze is a worse experience than twenty one-second blips. Each issue links to the track or connection it happened on.',
+      'Duration matters more than count: one twenty-second freeze is a worse experience than twenty one-second blips. Each issue links to the track or connection it happened on, and carries what it costs the score and how — a connectivity problem zeroes the connection, a broken media pipeline caps it, and a problem a person could see or hear subtracts from the track.',
     watchOut:
-      'An issue and its resolution are two halves of one episode, not two events. The dashboard pairs them, so counts here are episodes rather than raw report lines.',
+      'An issue and its resolution are two halves of one episode, not two events. The dashboard pairs them, so counts here are episodes rather than raw report lines. Note also which entity raised one: a bad path is reported on the connection and the damage it caused on the tracks, so the same trouble shows up twice by design — once as a cause and once as an effect.',
   },
   {
     id: 'client/transports',

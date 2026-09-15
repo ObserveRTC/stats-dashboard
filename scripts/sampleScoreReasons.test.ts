@@ -29,7 +29,8 @@ function at(i: number, score: number, reasons?: string[], penalties?: Record<str
   return { timestamp: new Date(T0 + i * 1000), score, reasons, penalties };
 }
 
-// A 4.7.0-shaped stats object: the client line carries scores but no reasons.
+// A 4.9.0-shaped stats object: the client line carries scores but no reasons,
+// because every entity ships only what it is itself responsible for.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const stats: any = {
   scores: {
@@ -37,7 +38,7 @@ const stats: any = {
     perPc: {
       'pc-1': {
         direction: 'recv',
-        values: [at(1, 3.0, ['high-packetloss'], { 'high-packetloss': 1.5 })],
+        values: [at(1, 3.0, ['transport-loss-sustained'], { 'transport-loss-sustained': 1.5 })],
       },
     },
     perTrack: {
@@ -66,13 +67,13 @@ check('a sample gathers the reasons of every component beneath it', () => {
   const entry = entries.find((e) => e.timestamp === T0 + 1000)!;
   assert.deepEqual(
     entry.reasons.map((r) => r.key).sort(),
-    ['high-packetloss', 'pixelated-video'],
+    ['pixelated-video', 'transport-loss-sustained'],
   );
 });
 
 check('every reason keeps the component that raised it', () => {
   const entry = buildSampleScoreReasons(stats)[1];
-  const loss = entry.reasons.find((r) => r.key === 'high-packetloss')!;
+  const loss = entry.reasons.find((r) => r.key === 'transport-loss-sustained')!;
   assert.equal(loss.origin, 'peerConnection');
   assert.equal(loss.entityId, 'pc-1');
   assert.equal(loss.direction, 'recv');
@@ -98,9 +99,9 @@ check('points sum only when every reason carried one', () => {
   const partial: any = {
     scores: {
       session: [at(0, 4)],
-      perPc: { 'pc-1': { values: [at(0, 3, ['high-rtt'])] } },
+      perPc: { 'pc-1': { values: [at(0, 3, ['transport-delay-degraded'])] } },
       perTrack: {
-        'pc-1:t': { kind: 'inbound', values: [at(0, 3, ['frozen-video'], { 'frozen-video': 2 })] },
+        'pc-1:t': { kind: 'inbound', values: [at(0, 3, ['video-flow-disrupted'], { 'video-flow-disrupted': 2 })] },
       },
     },
   };
@@ -110,7 +111,7 @@ check('points sum only when every reason carried one', () => {
 });
 
 check('the heaviest reason leads within a sample', () => {
-  assert.equal(buildSampleScoreReasons(stats)[1].reasons[0].key, 'high-packetloss');
+  assert.equal(buildSampleScoreReasons(stats)[1].reasons[0].key, 'transport-loss-sustained');
 });
 
 console.log('\nlinking a reason back to its section');
@@ -122,28 +123,28 @@ check('a track links to the consumer or producer that owns it', () => {
   const linked: any = {
     scores: {
       session: [at(0, 4)],
-      perPc: { 'pc-1': { values: [at(0, 3, ['high-rtt'])] } },
+      perPc: { 'pc-1': { values: [at(0, 3, ['transport-delay-degraded'])] } },
       perTrack: {
         'pc-1:in': {
           kind: 'inbound',
           trackId: 'in',
           consumerId: 'consumer-9',
-          values: [at(0, 3, ['frozen-video'])],
+          values: [at(0, 3, ['video-flow-disrupted'])],
         },
         'pc-1:out': {
           kind: 'outbound',
           trackId: 'out',
           producerId: 'producer-7',
-          values: [at(0, 3, ['cpu-limitation'])],
+          values: [at(0, 3, ['encoder-bottleneck'])],
         },
       },
     },
   };
   const [entry] = buildSampleScoreReasons(linked);
   const byKey = new Map(entry.reasons.map((r) => [r.key, r]));
-  assert.equal(byKey.get('frozen-video')?.targetHash, 'consumer/consumer-9');
-  assert.equal(byKey.get('cpu-limitation')?.targetHash, 'producer/producer-7');
-  assert.equal(byKey.get('high-rtt')?.targetHash, 'transport/pc-1');
+  assert.equal(byKey.get('video-flow-disrupted')?.targetHash, 'consumer/consumer-9');
+  assert.equal(byKey.get('encoder-bottleneck')?.targetHash, 'producer/producer-7');
+  assert.equal(byKey.get('transport-delay-degraded')?.targetHash, 'transport/pc-1');
 });
 
 check('a track never matched to an owner stays unlinked', () => {
@@ -155,7 +156,7 @@ check('a track never matched to an owner stays unlinked', () => {
       session: [at(0, 4)],
       perPc: {},
       perTrack: {
-        'pc-1:in': { kind: 'inbound', trackId: 'in', values: [at(0, 3, ['frozen-video'])] },
+        'pc-1:in': { kind: 'inbound', trackId: 'in', values: [at(0, 3, ['video-flow-disrupted'])] },
       },
     },
   };
@@ -170,7 +171,7 @@ check('a client entry that still ships reasons is not dropped', () => {
   // appear here without a code change.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withClientReason: any = {
-    scores: { session: [at(0, 3, ['cpu-limitation'])], perPc: {}, perTrack: {} },
+    scores: { session: [at(0, 3, ['encoder-bottleneck'])], perPc: {}, perTrack: {} },
   };
   const [entry] = buildSampleScoreReasons(withClientReason);
   assert.equal(entry.reasons[0].origin, 'client');
@@ -197,7 +198,7 @@ check('entries come back oldest first', () => {
   const spread: any = {
     scores: {
       session: [at(0, 4), at(5, 4)],
-      perPc: { 'pc-1': { values: [at(5, 3, ['high-rtt']), at(0, 3, ['high-jitter'])] } },
+      perPc: { 'pc-1': { values: [at(5, 3, ['transport-delay-degraded']), at(0, 3, ['downlink-congestion'])] } },
       perTrack: {},
     },
   };
@@ -212,7 +213,7 @@ check('a click lands on the sample it pointed at', () => {
   const spread: any = {
     scores: {
       session: [at(0, 4), at(10, 4)],
-      perPc: { 'pc-1': { values: [at(0, 3, ['high-rtt']), at(10, 3, ['high-jitter'])] } },
+      perPc: { 'pc-1': { values: [at(0, 3, ['transport-delay-degraded']), at(10, 3, ['downlink-congestion'])] } },
       perTrack: {},
     },
   };

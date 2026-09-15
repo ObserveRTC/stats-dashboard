@@ -188,8 +188,8 @@ check('a relayed candidate anywhere in the session counts as TURN', () => {
 
 check('a resolution entry is not a second issue', () => {
   const m = buildClientMetrics({ scores: { session: [] }, timeSeries: {} } as Any, [
-    { clientIssues: [{ type: 'freezed-video-track' }] },
-    { clientIssues: [{ type: 'freezed-video-track-resolved' }] },
+    { clientIssues: [{ type: 'video-flow-disrupted' }] },
+    { clientIssues: [{ type: 'video-flow-disrupted-resolved' }] },
   ] as Any);
   assert.equal(m.issueCount, 1);
 });

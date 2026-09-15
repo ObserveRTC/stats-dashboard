@@ -132,10 +132,10 @@ check('unexpected shapes are rendered, not dropped or thrown on', () => {
 });
 
 check('a record (schema >= 3.6) yields keys ordered by points descending', () => {
-  assert.deepEqual(toReasonList({ 'high-rtt': 0.5, 'frozen-video': 2 }), [
-    'frozen-video',
-    'high-rtt',
-  ]);
+  assert.deepEqual(
+    toReasonList({ 'transport-delay-degraded': 0.5, 'video-flow-disrupted': 2 }),
+    ['video-flow-disrupted', 'transport-delay-degraded'],
+  );
 });
 
 check('a record tie falls back to a stable alphabetical order', () => {
@@ -143,12 +143,13 @@ check('a record tie falls back to a stable alphabetical order', () => {
 });
 
 check('toReasonMap reads magnitudes only from a record', () => {
-  assert.deepEqual(toReasonMap({ 'high-rtt': 0.5, 'frozen-video': 2 }), {
-    'high-rtt': 0.5,
-    'frozen-video': 2,
+  assert.deepEqual(toReasonMap({ 'transport-delay-degraded': 0.5, 'video-flow-disrupted': 2 }), {
+    'transport-delay-degraded': 0.5,
+    'video-flow-disrupted': 2,
   });
   // A key that applied and cost nothing is a fact the wire stated, so 0 stays.
-  assert.deepEqual(toReasonMap({ 'high-rtt': 0 }), { 'high-rtt': 0 });
+  // `congestion` is priced at zero on purpose in 4.9.0, so this is a real case.
+  assert.deepEqual(toReasonMap({ congestion: 0 }), { congestion: 0 });
 });
 
 check('toReasonMap refuses to invent magnitudes for older vintages', () => {
@@ -385,25 +386,41 @@ check('percentiles interpolate and handle the edges', () => {
   assert.equal(percentile([10, 1, 5], 0.5), 5);
 });
 
-check('issues follow observer-js families, collapsed into four buckets', () => {
-  // network = observer-js "congestion" + "connectivity"
+check('issues are bucketed by the 4.9.0 issue table, not by their spelling', () => {
+  // network: the ICE and transport-quality categories.
   assert.equal(classifyIssue('congestion'), 'network');
-  assert.equal(classifyIssue('outbound-bandwidth-limited'), 'network');
+  assert.equal(classifyIssue('uplink-congestion'), 'network');
+  assert.equal(classifyIssue('downlink-congestion'), 'network');
   assert.equal(classifyIssue('ice-disconnected'), 'network');
   assert.equal(classifyIssue('unstable-ice-path'), 'network');
-  assert.equal(classifyIssue('turn-unreachable'), 'network');
+  assert.equal(classifyIssue('dtls-handshake-stalled'), 'network');
+  assert.equal(classifyIssue('transport-loss-sustained'), 'network');
+  assert.equal(classifyIssue('transport-demux-stalled'), 'network');
 
-  assert.equal(classifyIssue('audio-desync'), 'audio');
-  assert.equal(classifyIssue('high-concealment'), 'audio');
-  assert.equal(classifyIssue('jitter-buffer-growth'), 'audio');
+  assert.equal(classifyIssue('av-desync'), 'audio');
+  assert.equal(classifyIssue('invented-speech'), 'audio');
+  assert.equal(classifyIssue('audio-jitter-buffer-stress'), 'audio');
+  // A capture finding is bucketed by what the device was capturing.
+  assert.equal(classifyIssue('silent-audio-source'), 'audio');
 
-  assert.equal(classifyIssue('video-freeze'), 'video');
+  assert.equal(classifyIssue('video-flow-disrupted'), 'video');
   assert.equal(classifyIssue('stuck-decoder'), 'video');
-  assert.equal(classifyIssue('keyframe-storm'), 'video');
+  assert.equal(classifyIssue('video-recovery-failed'), 'video');
+  assert.equal(classifyIssue('pixelated-video'), 'video');
+  assert.equal(classifyIssue('encoder-bottleneck'), 'video');
 
-  // endpoint capacity and anything unrecognised both land in "other"
-  assert.equal(classifyIssue('cpu-limitation'), 'other');
+  // The endpoint, a lost device, and anything unrecognised land in "other".
+  assert.equal(classifyIssue('cpulimitation'), 'other');
+  assert.equal(classifyIssue('capture-source-lost'), 'other');
   assert.equal(classifyIssue('app-specific-thing'), 'other');
+});
+
+check('an unknown type still falls back to matching on its name', () => {
+  // Detectors are extensible, so a type the table has never seen has to land
+  // somewhere better than "other" when its name is informative.
+  assert.equal(classifyIssue('turn-unreachable'), 'network');
+  assert.equal(classifyIssue('my-app-video-thing'), 'video');
+  assert.equal(classifyIssue('my-app-audio-thing'), 'audio');
 });
 
 check('a resolution entry does not double-count its raise', () => {
@@ -412,7 +429,7 @@ check('a resolution entry does not double-count its raise', () => {
     {
       timestamp: T0,
       clientIssues: [
-        { type: 'video-freeze', key: 'k1', timestamp: T0 },
+        { type: 'video-flow-disrupted', key: 'k1', timestamp: T0 },
         { type: 'congestion', key: 'k2', timestamp: T0 },
       ],
     },
@@ -420,8 +437,8 @@ check('a resolution entry does not double-count its raise', () => {
       timestamp: T0 + 1000,
       clientIssues: [
         // the closing half of the freeze raised above
-        { type: 'video-freeze-resolved', key: 'k1', timestamp: T0 + 1000 },
-        { type: 'audio-desync', key: 'k3', timestamp: T0 + 1000 },
+        { type: 'video-flow-disrupted-resolved', key: 'k1', timestamp: T0 + 1000 },
+        { type: 'av-desync', key: 'k3', timestamp: T0 + 1000 },
       ],
     },
   ];
@@ -432,7 +449,7 @@ check('a resolution entry does not double-count its raise', () => {
   assert.equal(sum.issues.other, 0);
   assert.equal(sum.issues.total, 3);
   // The resolved suffix is stripped for the type listing.
-  assert.deepEqual(sum.issues.typesByCategory.video, ['video-freeze']);
+  assert.deepEqual(sum.issues.typesByCategory.video, ['video-flow-disrupted']);
 });
 
 check('latency stats come from candidate-pair RTT, in ms', () => {

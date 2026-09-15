@@ -40,6 +40,7 @@ export async function GET(request: Request) {
 
   const storage = {
     endpoint: config.endpoint ?? '(aws default)',
+    prefix: config.prefix || '(bucket root)',
     publicEndpoint: config.publicEndpoint ?? '(same as endpoint)',
     bucket: config.bucket || null,
     region: config.region,

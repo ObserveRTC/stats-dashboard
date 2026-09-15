@@ -60,10 +60,12 @@
   opacity: 0.75;
 }
 
-.groupSlice[data-group='path'] { background: var(--accent); }
-.groupSlice[data-group='audio'] { background: var(--violet, #8b5cf6); }
-.groupSlice[data-group='video-receive'] { background: var(--success); }
-.groupSlice[data-group='video-send'] { background: var(--warning, #d97706); }
+/* The four score categories, ordered by how hard they hit: connectivity zeroes,
+   pipeline disruption caps, the two quality kinds subtract. */
+.groupSlice[data-group='connectivity'] { background: var(--danger); }
+.groupSlice[data-group='pipeline-disruption'] { background: var(--warning, #d97706); }
+.groupSlice[data-group='perceived-quality'] { background: var(--violet, #8b5cf6); }
+.groupSlice[data-group='transport-quality'] { background: var(--accent); }
 
 .groupLabel {
   font-size: 0.62rem;

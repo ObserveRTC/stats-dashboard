@@ -5,16 +5,20 @@
  * client entry. Before it, a single inbound track pixelating produced
  * `pixelated-video` twice in one sample — once on the track that was actually
  * pixelating, and again on the client entry — which read as though the client
- * itself were the thing degrading, and invited a worse misreading still: the
- * client score is a smoothed weighted aggregate, not `5 - sum(reasons)`, so a
- * recovered client score of ~5 could sit beside an inherited `high-packetloss`
- * and look like a stale reason when it was really a scope error.
+ * itself were the thing degrading.
  *
  * Now each entity ships only what it is itself responsible for, and the client
- * subtracts nothing of its own — so `ClientSample.scoreReasons` is empty by
- * design, and **the client-level view has to be rebuilt here** by re-aggregating
- * the components of the same sample. No information was lost; it just has to be
- * put back together, which is what this does.
+ * subtracts nothing of its own: since 4.9.0 the client score is `5 - RMSE` over
+ * five dimensions (the transport, and inbound and outbound audio and video),
+ * which is not a sum of penalties at all. So `ClientSample.scoreReasons` is
+ * empty by design, and **the client-level view has to be rebuilt here** by
+ * re-aggregating the components of the same sample. No information was lost; it
+ * just has to be put back together, which is what this does.
+ *
+ * Since 4.9.0 each key is also an **issue type**, so a reason on this list is
+ * joinable to an open issue in `clientIssues[]` of the same sample, on the same
+ * entity — which is what makes `targetHash` below able to point at the object
+ * that owns it rather than at a guess.
  *
  * Grouping is by exact timestamp: every score in one sample is stamped with
  * that sample's own time by `statsProcessor`, so the client score, its peer

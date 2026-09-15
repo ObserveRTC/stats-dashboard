@@ -28,7 +28,7 @@ export const ClientEventTypes = {
 	CODEC_CHANGED: 'CODEC_CHANGED',
 	VIDEO_RESOLUTION_CHANGED: 'VIDEO_RESOLUTION_CHANGED',
 	SIMULCAST_LAYER_CHANGED: 'SIMULCAST_LAYER_CHANGED',
-	CAPTURE_TRACK_ENDED: 'CAPTURE_TRACK_ENDED',
+	CAPTURE_SOURCE_LOST: 'CAPTURE_SOURCE_LOST',
 	CAPTURE_TRACK_MUTED: 'CAPTURE_TRACK_MUTED',
 	STATS_COLLECTION_GAP: 'STATS_COLLECTION_GAP',
 	TAB_VISIBILITY_CHANGED: 'TAB_VISIBILITY_CHANGED',
@@ -301,7 +301,25 @@ export interface StatsCollectionGapEventPayload extends Record<string, unknown> 
 	durationOfCollectingStatsInMs?: number;
 }
 
-export interface CaptureTrackEndedEventPayload extends Record<string, unknown> {
+/**
+ * The capture device went away: the MediaStreamTrack reached `ended`.
+ *
+ * Renamed from `CAPTURE_TRACK_ENDED` in client-monitor 4.9.0, when
+ * `CaptureFailureDetector` was split into one detector per finding. It now
+ * covers only a device that is *gone* — the OS or another application taking
+ * the device is `CAPTURE_TRACK_MUTED`, and a live microphone producing digital
+ * silence is the `silent-audio-source` issue. All three used to arrive under
+ * one detector, which is why they used to be hard to tell apart.
+ */
+export interface CaptureSourceLostEventPayload extends Record<string, unknown> {
+	peerConnectionId: string;
+	trackId: string;
+	kind: string;
+	deviceLabel?: string;
+}
+
+/** The OS or another application took the device. Event only — no issue is raised. */
+export interface CaptureTrackMutedEventPayload extends Record<string, unknown> {
 	peerConnectionId: string;
 	trackId: string;
 	kind: string;
@@ -320,12 +338,64 @@ export interface IceRestartEventPayload extends Record<string, unknown> {
 	timestamp: number;
 }
 
+/**
+ * The selected ICE path changed.
+ *
+ * `from` and `to` are **structured records** from sample schema 3.7.0 onward,
+ * which is the release that let event payloads nest. Before it both were
+ * pre-serialised JSON documents in strings, so a reader that calls `JSON.parse`
+ * on them will now be parsing an object. `parsePathEvidence` below accepts
+ * either and is what this dashboard reads them through.
+ */
 export interface PeerConnectionIcePathChangedEventPayload extends Record<string, unknown> {
 	peerConnectionId: string;
 	/** Why the path changed: 'initial-selection', 'direct-to-relay', … */
 	transition: string;
-	/** The previous path evidence as a JSON document. Absent for the first path on a transport. */
-	from?: string;
-	/** The path evidence selected now, as a JSON document. */
-	to: string;
+	/** The previous path evidence. Absent for the first path observed on a transport. */
+	from?: Record<string, string | number | boolean | undefined> | string;
+	/** The path evidence that is selected now. */
+	to: Record<string, string | number | boolean | undefined> | string;
+}
+
+/**
+ * Read one side of `PEER_CONNECTION_ICE_PATH_CHANGED`.
+ *
+ * Schema 3.7.0 ships path evidence as a record; earlier producers shipped the
+ * same document as a JSON string. Both resolve to the same object here, so no
+ * caller has to know which vintage it is holding.
+ */
+export function parsePathEvidence(
+	value: Record<string, unknown> | string | undefined,
+): Record<string, unknown> | undefined {
+	if (value == null) return undefined;
+	if (typeof value !== 'string') return value;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Establishment is taking too long, and — since schema 3.7.0 — which stage it is
+ * stuck in.
+ *
+ * `connectionState: 'connecting'` covers ICE and the DTLS handshake alike, so
+ * before 3.7.0 this event could not tell a STUN desert from a certificate
+ * problem. `stalledStage` names which of them is holding the connection up.
+ */
+export interface LongPcConnectionEstablishmentEventPayload extends Record<string, unknown> {
+	peerConnectionId: string;
+	duration: number;
+	/** 'ice-gathering', 'ice-checking', 'dtls' or 'unknown'. Since schema 3.7.0. */
+	stalledStage?: string;
+	/** ICE state of the most severe transport at raise time. Since schema 3.7.0. */
+	iceState?: string;
+	/** DTLS state of the most severe transport at raise time. Since schema 3.7.0. */
+	dtlsState?: string;
+	/** The peer connection's ICE gathering state at raise time. Since schema 3.7.0. */
+	iceGatheringState?: string;
 }

@@ -47,6 +47,9 @@ interface Props {
  * re-aggregating anyway, keeping the attribution is free — so a reason is never
  * shown pooled, always next to the peer connection or track that raised it.
  *
+ * Since 4.9.0 each key is an **issue type**, so a row here names a finding that
+ * is also open in the issue list at that moment, on that same entity.
+ *
  * Clicking a point on the chart parks this on that sample; clicking a row here
  * moves the chart's marker. **Every** sample is listed, quiet ones included:
  * the list is driven by clicking the chart, so dropping the quiet samples would
@@ -129,10 +132,11 @@ export function ScoreReasonsBrowser({
       revealToken={revealToken}
     >
       <p className={styles.lede}>
-        Every sample, and for each the components that raised a reason. From client-monitor 4.7.0
-        the client entry ships no reasons of its own — the client view is rebuilt from the peer
-        connections and tracks of the same sample, which is also what keeps the attribution. Click
-        a point on the chart above to jump to that sample.{' '}
+        Every sample, and for each the components that raised a reason. The client entry ships no
+        reasons of its own — the client view is rebuilt from the peer connections and tracks of the
+        same sample, which is also what keeps the attribution. Since client-monitor 4.9.0 each key
+        is an issue type, so every row names a finding that is also in the issue list at that
+        moment. Click a point on the chart above to jump to that sample.{' '}
         <span className={styles.ledeCount}>
           {withReasons} of {entries.length} carried a reason.
         </span>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { s3Client, bucketName, listObjects } from '@/lib/s3';
+import { s3Client, bucketName, listObjects, toStorageKey } from '@/lib/s3';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   isCallSummaryName,
@@ -63,7 +63,7 @@ export async function GET(
     keys.map(async (key) => {
       const name = key.split('/').at(-1) ?? '';
       try {
-        const obj = await s3Client().send(new GetObjectCommand({ Bucket: bucketName(), Key: key }));
+        const obj = await s3Client().send(new GetObjectCommand({ Bucket: bucketName(), Key: toStorageKey(key) }));
         const text = await obj.Body?.transformToString();
         if (!text) {
           unreadable += 1;

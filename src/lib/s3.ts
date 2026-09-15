@@ -20,6 +20,11 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * `NEXT_PUBLIC_`, and the browser talks to `/api/*` rather than to storage,
  * except for the presigned URLs this module mints.
  *
+ * `S3_PREFIX` scopes everything to one folder, for a bucket shared between
+ * tenants (`<tenantFqdn>/<roomId>/<callId>/…`). Listings and reads start inside
+ * it and keys are relativized on the way out, so nothing downstream sees it.
+ * Empty — the default — reads the whole bucket.
+ *
  * Those presigned URLs are why `S3_PUBLIC_ENDPOINT` exists. The server and the
  * browser do not always reach storage by the same name — inside a container
  * network it is `http://minio:9000`, from the user's machine it is
@@ -36,8 +41,33 @@ function presignTtl(): number {
   return Number.isFinite(raw) && raw > 0 ? raw : 900;
 }
 
+/**
+ * The tenant prefix every key is scoped to. `''` when unset.
+ *
+ * Normalized rather than validated: `rooms.polsl.pl`, `/rooms.polsl.pl` and
+ * `rooms.polsl.pl/` all mean the same thing, and rejecting two of the three
+ * would cost a deployment for no benefit.
+ */
+export function storagePrefix(): string {
+  const cleaned = (process.env.S3_PREFIX ?? '').trim().replace(/^\/+|\/+$/g, '');
+  return cleaned === '' ? '' : `${cleaned}/`;
+}
+
+/** `room/call/client.jsonl` -> `tenant/room/call/client.jsonl`. */
+export function toStorageKey(key: string): string {
+  return `${storagePrefix()}${key}`;
+}
+
+/** The reverse, so nothing downstream ever sees the tenant folder. */
+export function fromStorageKey(key: string): string {
+  const prefix = storagePrefix();
+  return prefix && key.startsWith(prefix) ? key.slice(prefix.length) : key;
+}
+
 export interface StorageConfig {
   endpoint?: string;
+  /** Key prefix every listing and read is scoped to. `''` means the bucket root. */
+  prefix: string;
   /** Endpoint to sign browser-facing URLs against, when it differs. */
   publicEndpoint?: string;
   bucket: string;
@@ -59,6 +89,7 @@ export interface StorageConfig {
 export function storageConfig(): StorageConfig {
   return {
     endpoint: process.env.S3_ENDPOINT || undefined,
+    prefix: storagePrefix(),
     publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || undefined,
     bucket: process.env.S3_BUCKET ?? '',
     region: process.env.S3_REGION || 'us-east-1',
@@ -205,6 +236,9 @@ export interface ObjectEntry {
  * List all objects under a prefix (no delimiter — recurses into subdirectories).
  * Handles S3 pagination automatically.
  * e.g. prefix="roomA/"  →  all .jsonl files in that room across all calls
+ *
+ * Takes and returns keys *relative to `S3_PREFIX`*, so a caller listing `''`
+ * gets the rooms of its own tenant rather than a single folder named after it.
  */
 export async function listObjectsDeep(prefix: string): Promise<ObjectEntry[]> {
   const results: ObjectEntry[] = [];
@@ -212,12 +246,17 @@ export async function listObjectsDeep(prefix: string): Promise<ObjectEntry[]> {
   do {
     const cmd = new ListObjectsV2Command({
       Bucket: bucketName(),
-      Prefix: prefix,
+      Prefix: toStorageKey(prefix),
       ContinuationToken: token,
     });
     const res = await s3Client().send(cmd);
     for (const obj of res.Contents ?? []) {
-      if (obj.Key) results.push({ key: obj.Key, lastModified: obj.LastModified });
+      if (!obj.Key) continue;
+      const key = fromStorageKey(obj.Key);
+      // The prefix itself can exist as a zero-byte folder marker, which
+      // relativizes to nothing and is not an object anybody asked for.
+      if (key === '') continue;
+      results.push({ key, lastModified: obj.LastModified });
     }
     token = res.IsTruncated ? res.NextContinuationToken : undefined;
   } while (token);
@@ -227,26 +266,31 @@ export async function listObjectsDeep(prefix: string): Promise<ObjectEntry[]> {
 /**
  * List the immediate object keys + metadata under a prefix (single level, with delimiter).
  * e.g. prefix="roomA/call1/"  →  ["roomA/call1/client1.jsonl", ...]
+ *
+ * Relative to `S3_PREFIX`, like `listObjectsDeep`.
  */
 export async function listObjects(prefix: string): Promise<ObjectEntry[]> {
   const cmd = new ListObjectsV2Command({
     Bucket: bucketName(),
-    Prefix: prefix,
+    Prefix: toStorageKey(prefix),
     Delimiter: '/',
   });
   const res = await s3Client().send(cmd);
   return (res.Contents ?? [])
     .filter((o) => o.Key)
-    .map((o) => ({ key: o.Key!, lastModified: o.LastModified }));
+    .map((o) => ({ key: fromStorageKey(o.Key!), lastModified: o.LastModified }))
+    .filter((o) => o.key !== '');
 }
 
 /**
  * Generate a presigned GET URL for a private object.
  * The URL is valid for S3_PRESIGN_TTL seconds and requires no credentials from
  * the browser.
+ *
+ * `key` is relative to `S3_PREFIX`.
  */
 export async function presignGet(key: string): Promise<string> {
-  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: key });
+  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: toStorageKey(key) });
   return getSignedUrl(presignClient(), cmd, { expiresIn: storageConfig().presignTtl });
 }
 
@@ -271,9 +315,10 @@ export function announceStorageConfig(): void {
   const problems = storageConfigProblems(config);
 
   console.info(
-    '[storage] endpoint=%s bucket=%s region=%s pathStyle=%s credentials=%s presignTtl=%ss%s',
+    '[storage] endpoint=%s bucket=%s prefix=%s region=%s pathStyle=%s credentials=%s presignTtl=%ss%s',
     config.endpoint ?? '(aws default)',
     config.bucket || '(unset)',
+    config.prefix || '(root)',
     config.region,
     config.forcePathStyle,
     config.hasCredentials ? 'env' : 'sdk-chain',

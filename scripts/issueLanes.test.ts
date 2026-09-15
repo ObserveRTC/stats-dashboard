@@ -46,15 +46,15 @@ console.log('issue episodes');
 
 check('a raise and its resolution become one interval', () => {
   const samples = [
-    sample(0, [{ type: 'freezed-video-track', key: 'k1', timestamp: T0, payload: { trackId: 't-1' } }]),
+    sample(0, [{ type: 'video-flow-disrupted', key: 'k1', timestamp: T0, payload: { trackId: 't-1' } }]),
     sample(5000, []),
     sample(9000, [
-      { type: 'freezed-video-track-resolved', key: 'k1', timestamp: T0 + 9000, payload: { comment: 'recovered' } },
+      { type: 'video-flow-disrupted-resolved', key: 'k1', timestamp: T0 + 9000, payload: { comment: 'recovered' } },
     ]),
   ];
   const episodes = buildClientIssueEpisodes(samples);
   assert.equal(episodes.length, 1);
-  assert.equal(episodes[0].type, 'freezed-video-track');
+  assert.equal(episodes[0].type, 'video-flow-disrupted');
   assert.equal(episodes[0].raisedAt, T0);
   assert.equal(episodes[0].resolvedAt, T0 + 9000);
   assert.equal(episodes[0].durationMs, 9000);
@@ -80,7 +80,7 @@ check('a client that never sends resolutions gets point-in-time issues', () => {
   // session for what was only ever a momentary report.
   const samples = [
     sample(0, [{ type: 'ice-disconnected', key: 'k9', timestamp: T0 }]),
-    sample(1000, [{ type: 'audio-concealment', key: 'k8', timestamp: T0 + 1000 }]),
+    sample(1000, [{ type: 'invented-speech', key: 'k8', timestamp: T0 + 1000 }]),
   ];
   const episodes = buildClientIssueEpisodes(samples);
   assert.equal(episodes.length, 2);
@@ -119,11 +119,11 @@ check('the resolution comment and its duration reach the episode', () => {
   // payload — the raise payload is not repeated — so both halves are read.
   const samples = [
     sample(0, [
-      { type: 'freezed-video-track', key: 'k1', timestamp: T0, payload: { trackId: 't-1' } },
+      { type: 'video-flow-disrupted', key: 'k1', timestamp: T0, payload: { trackId: 't-1' } },
     ]),
     sample(4000, [
       {
-        type: 'freezed-video-track-resolved',
+        type: 'video-flow-disrupted-resolved',
         key: 'k1',
         timestamp: T0 + 4000,
         payload: { raisedAt: T0, comment: 'frames flowing again', durationInMs: 4000 },
@@ -178,7 +178,7 @@ check('a duration-carrying raise is a report, not an open issue', () => {
   // Some detectors describe a finished condition in the raise itself. That is
   // resolved-by-inference, and must not claim the client said so.
   const samples = [
-    sample(0, [{ type: 'audio-concealment', key: 'k1', timestamp: T0, payload: { durationInMs: 1200 } }]),
+    sample(0, [{ type: 'invented-speech', key: 'k1', timestamp: T0, payload: { durationInMs: 1200 } }]),
   ];
   const [episode] = buildClientIssueEpisodes(samples);
   assert.equal(episode.stillOpen, false);
@@ -189,10 +189,10 @@ check('a duration-carrying raise is a report, not an open issue', () => {
 console.log('\nwhich object an issue belongs to');
 
 check('issue types route to the right timeline', () => {
-  assert.equal(issueTimelineTarget('audio-concealment'), 'consumer');
-  assert.equal(issueTimelineTarget('freezed-video-track'), 'consumer');
+  assert.equal(issueTimelineTarget('invented-speech'), 'consumer');
+  assert.equal(issueTimelineTarget('video-flow-disrupted'), 'consumer');
   assert.equal(issueTimelineTarget('encoder-bottleneck'), 'producer');
-  assert.equal(issueTimelineTarget('capture-bottleneck'), 'producer');
+  assert.equal(issueTimelineTarget('video-capture-bottleneck'), 'producer');
   assert.equal(issueTimelineTarget('ice-disconnected'), 'transport');
 });
 
@@ -209,7 +209,7 @@ check('a producer issue also matches through its track id', () => {
   // Detectors report the track, not the SFU object, so the producer's own
   // track ids are the join.
   const samples = [
-    sample(0, [{ type: 'capture-bottleneck', key: 'p2', timestamp: T0, payload: { trackId: 'track-9' } }]),
+    sample(0, [{ type: 'video-capture-bottleneck', key: 'p2', timestamp: T0, payload: { trackId: 'track-9' } }]),
   ];
   const episodes = buildClientIssueEpisodes(samples);
   assert.equal(matchProducerEpisodes(episodes, 'prod-A', new Set(['track-9'])).length, 1);
@@ -218,8 +218,8 @@ check('a producer issue also matches through its track id', () => {
 
 check('a consumer issue matches on id or track', () => {
   const samples = [
-    sample(0, [{ type: 'audio-concealment', key: 'c1', timestamp: T0, payload: { consumerId: 'cons-A' } }]),
-    sample(10, [{ type: 'freezed-video-track', key: 'c2', timestamp: T0 + 10, payload: { trackId: 'track-3' } }]),
+    sample(0, [{ type: 'invented-speech', key: 'c1', timestamp: T0, payload: { consumerId: 'cons-A' } }]),
+    sample(10, [{ type: 'video-flow-disrupted', key: 'c2', timestamp: T0 + 10, payload: { trackId: 'track-3' } }]),
   ];
   const episodes = buildClientIssueEpisodes(samples);
   assert.equal(matchConsumerEpisodes(episodes, 'cons-A', new Set()).length, 1);
@@ -362,7 +362,7 @@ check('an untagged producer still gets its issue lane end to end', () => {
 
 check('an untagged consumer still gets its issue lane end to end', () => {
   const samples = [
-    sample(0, [{ type: 'freezed-video-track', key: 'f1', timestamp: T0, payload: { trackId: 'track-in-1' } }]),
+    sample(0, [{ type: 'video-flow-disrupted', key: 'f1', timestamp: T0, payload: { trackId: 'track-in-1' } }]),
   ];
   const lane = consumerIssueLaneItems(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

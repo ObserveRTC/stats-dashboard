@@ -8,7 +8,12 @@
  */
 
 import type { ClientSample } from '../schema/ClientSample.ts';
-import { baseIssueType, isResolvedIssueType } from '../schema/ClientIssueTypes.ts';
+import {
+  baseIssueType,
+  getIssueTypeMeta,
+  isKnownIssueType,
+  isResolvedIssueType,
+} from '../schema/ClientIssueTypes.ts';
 import { buildTabVisibility, type TabVisibility } from './tabVisibility.ts';
 import type { ProcessWebRTCStatsResult } from './statsTypes.ts';
 
@@ -40,24 +45,46 @@ function mean(values: number[]): number | null {
 
 export type IssueCategory = 'audio' | 'video' | 'network' | 'other';
 
+/** Presentation categories from the issue table, folded into the four cards. */
+const CATEGORY_BUCKET: Record<string, IssueCategory> = {
+  audio: 'audio',
+  'video-receive': 'video',
+  'video-send': 'video',
+  ice: 'network',
+  transport: 'network',
+  endpoint: 'other',
+  other: 'other',
+};
+
+/** Capture findings split by what the device was capturing, not by the stage. */
+const CAPTURE_BUCKET: Record<string, IssueCategory> = {
+  'silent-audio-source': 'audio',
+  'capture-source-lost': 'other',
+};
 
 /**
- * Which family an issue type belongs to.
+ * Which of the four summary cards an issue counts towards.
  *
- * The matchers are lifted from observer-js's own `IssueConclusion` family table
- * so the dashboard and the observer agree on what counts as an audio issue.
- * Its five families collapse into the four buckets shown here: congestion and
- * connectivity are both network, and endpoint capacity falls in with anything
- * unrecognised — detectors are extensible and applications add their own types,
- * so `other` is a real bucket, not a leftover.
+ * Reads `schema/ClientIssueTypes` rather than matching on the name, so the
+ * dashboard and the 4.9.0 issue table cannot disagree about what counts as an
+ * audio issue. The substring matchers below are the fallback for a type the
+ * table does not know — an application's own detector, or one newer than this
+ * build — where the name is genuinely all there is to go on.
  */
 export function classifyIssue(type: string): IssueCategory {
-  const t = baseIssueType(type).toLowerCase();
+  const base = baseIssueType(type);
 
+  if (isKnownIssueType(base)) {
+    const { category } = getIssueTypeMeta(base);
+    if (category === 'capture') return CAPTURE_BUCKET[base] ?? 'other';
+    return CATEGORY_BUCKET[category] ?? 'other';
+  }
+
+  const t = base.toLowerCase();
   if (t.startsWith('congestion') || t.includes('bandwidth')) return 'network';
-  if (t.startsWith('ice-') || t.includes('turn') || t === 'unstable-ice-path') return 'network';
-  if (t.startsWith('audio-') || t.includes('concealment') || t.includes('jitter-buffer')) return 'audio';
-  if (t.includes('video') || t.includes('freeze') || t.includes('keyframe') || t.includes('decoder')) return 'video';
+  if (t.startsWith('ice-') || t.startsWith('dtls-') || t.includes('turn') || t.includes('transport')) return 'network';
+  if (t.includes('audio') || t.includes('speech') || t.includes('jitter-buffer')) return 'audio';
+  if (t.includes('video') || t.includes('freeze') || t.includes('frozen') || t.includes('decoder') || t.includes('encoder')) return 'video';
   return 'other';
 }
 

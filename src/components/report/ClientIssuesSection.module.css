@@ -296,7 +296,55 @@
   margin: 0 0 0.4rem;
   font-size: 11px;
   line-height: 1.5;
+  color: var(--text);
+}
+
+.typeScoring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 0.4rem;
+}
+
+.typeBadge {
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The four score categories, ordered by how hard they hit. */
+.typeBadge[data-score-category='connectivity'] {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.typeBadge[data-score-category='pipeline-disruption'] {
+  border-color: var(--warning, #d97706);
+  color: var(--warning, #d97706);
+}
+.typeBadge[data-score-category='perceived-quality'] {
+  border-color: var(--violet, #8b5cf6);
+  color: var(--violet, #8b5cf6);
+}
+.typeBadge[data-score-category='transport-quality'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.typeImplication,
+.typeRemedy {
+  margin: 0 0 0.4rem;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.typeRemedy {
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
 }
 
 .issueBody {

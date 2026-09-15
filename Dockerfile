@@ -69,6 +69,8 @@ ENV NODE_ENV=production \
 # Real values arrive at `docker run`; nothing here is baked into a layer.
 #
 #   S3_BUCKET             required — bucket holding <roomId>/<callId>/ folders
+#   S3_PREFIX             optional key prefix, for a bucket shared between
+#                         tenants (e.g. `rooms.polsl.pl/`). Blank reads it all
 #   S3_ENDPOINT           omit for AWS S3; set for MinIO, R2, self-hosted
 #   S3_PUBLIC_ENDPOINT    set only when the browser reaches storage by a
 #                         different name than the server does; a presigned URL
@@ -80,6 +82,7 @@ ENV NODE_ENV=production \
 #   S3_FORCE_PATH_STYLE   true for MinIO and most self-hosted, false for AWS/R2
 #   S3_PRESIGN_TTL        presigned URL lifetime in seconds, default 900
 ENV S3_BUCKET="" \
+    S3_PREFIX="" \
     S3_ENDPOINT="" \
     S3_PUBLIC_ENDPOINT="" \
     S3_REGION="us-east-1" \

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { s3Client, bucketName } from '@/lib/s3';
+import { s3Client, bucketName, toStorageKey } from '@/lib/s3';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { isCallSummaryName } from '@/schema/CallSummary';
 
@@ -56,7 +56,7 @@ export async function GET(
 
   const key = `${roomId}/${callId}/${name}`;
   try {
-    const obj = await s3Client().send(new GetObjectCommand({ Bucket: bucketName(), Key: key }));
+    const obj = await s3Client().send(new GetObjectCommand({ Bucket: bucketName(), Key: toStorageKey(key) }));
     const text = await obj.Body?.transformToString();
     if (!text) return NextResponse.json({ success: false, error: 'Empty object.' }, { status: 404 });
 

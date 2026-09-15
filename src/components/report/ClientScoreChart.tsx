@@ -196,9 +196,10 @@ export function ClientScoreChart({
         const time = d3TimeFormat('%H:%M:%S', tz)(point.timestamp);
         const reasons = point.entry?.reasons ?? [];
 
-        // Grouped by the component that raised them, because that is the thing
-        // 4.7.0's change is about: the client score is a weighted aggregate,
-        // and every reason belongs to something underneath it.
+        // Grouped by the component that raised them, because the client score
+        // is `5 - RMSE` over five dimensions rather than a sum of penalties:
+        // every reason belongs to something underneath it, and only that
+        // component's own score says what the reason actually did.
         const byEntity = new Map<string, typeof reasons>();
         for (const reason of reasons) {
           const list = byEntity.get(reason.entityLabel) ?? [];

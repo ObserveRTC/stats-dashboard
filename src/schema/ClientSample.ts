@@ -1,18 +1,20 @@
 /**
  * NOTE — local widening.
  *
- * This file tracks the generated schema in observer-js, but the dashboard reads
- * `.jsonl` files written by every producer version that ever ran, not just the
- * current one. Two fields changed shape across versions, so every vintage is
- * accepted here and normalized at the parse layer
+ * This file tracks the generated schema in observer-js. The dashboard targets
+ * client-monitor-js **4.9.0 and later**, whose sample schema is **3.7.0**, but
+ * it reads `.jsonl` files written by every producer version that ever ran — so
+ * two fields stay widened here and are normalized at the parse layer
  * (`clientSampleParse.ts`: `parseJsonPayload`, `toReasonList`, `toReasonMap`):
  *
- *   payload       schema ≤3.2 wrote a JSON string; ≥3.3 writes an object. The
- *                 value type also stays `unknown` rather than 3.6's
- *                 `boolean | string | number`: stored samples predate that
- *                 narrowing and carry nested objects in payloads.
- *   scoreReasons  schema ≤3.2 wrote a single string; 3.3–3.5 wrote a string[];
- *                 ≥3.6 writes a Record<reasonKey, pointsSubtracted>
+ *   payload       schema <=3.2 wrote a JSON string; >=3.3 writes an object, and
+ *                 3.7.0 lets that object nest. The value type stays `unknown`
+ *                 rather than 3.6's `boolean | string | number`, which 3.7.0
+ *                 widened again anyway.
+ *   scoreReasons  schema <=3.2 wrote a single string; 3.3-3.5 wrote a string[];
+ *                 >=3.6 writes a Record<reasonKey, pointsSubtracted>. A 4.9.0
+ *                 client always writes the record, and its keys are **issue
+ *                 types** — the same strings in `clientIssues[]`.
  *
  * Two fields the generated schema has since dropped are also kept, because
  * samples already in storage still carry them and the dashboard reads them:
@@ -20,10 +22,26 @@
  *   OutboundRtpStats.trackIdentifier
  *   PeerConnectionSample.extensionStats
  *
+ * ## What 3.7.0 changed that a reader has to act on
+ *
+ * `IceTransportStats` ships its mostly-static members — `iceRole`,
+ * `iceLocalUsernameFragment`, `localCertificateId`, `remoteCertificateId`,
+ * `tlsVersion`, `dtlsCipher`, `dtlsRole`, `srtpCipher` — in a transport's first
+ * sample and again **only when a value changes**. Consumers keep the last seen
+ * value per transport `id`; **absence means "unchanged", not "unknown"**. A
+ * reader that takes each sample at face value will show a transport losing its
+ * certificate a second after it got one. The client config
+ * `sendIceTransportMetadataOnChangeOnly: false` restores every-sample emission.
+ * Dynamic members (`iceState`, `dtlsState`, `selectedCandidatePairId`,
+ * `selectedCandidatePairChanges`, byte and packet counters) are unchanged.
+ *
+ * `PEER_CONNECTION_ICE_PATH_CHANGED` carries structured `from`/`to` records
+ * rather than JSON strings — see `parsePathEvidence` in `ClientEventTypes.ts`.
+ *
  * Keep all of the above when re-syncing from observer-js.
  */
 
-export const schemaVersion = '3.6.0';
+export const schemaVersion = '3.7.0';
 
 /**
 * The WebRTC app provided custom stats payload

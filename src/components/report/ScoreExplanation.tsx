@@ -6,6 +6,7 @@ import {
   BAND_COLORS,
   type ReasonScope,
 } from '../../utils/scoreExplanation.ts';
+import { GROUP_LABELS } from '../../schema/ScoreReasons.ts';
 import { CollapsibleSection } from '../sections/CollapsibleSection.tsx';
 import styles from './ScoreExplanation.module.css';
 
@@ -28,12 +29,12 @@ function pct(v: number): string {
 /**
  * Why the client's score is what it is.
  *
- * The chart above shows the number moving; this says what moved it. From
- * schema 3.6.0 each reason arrives with the points it subtracted, so the table
- * shows what things actually cost. Older samples name reasons without
- * magnitudes; those columns read “—” and the ranking falls back to how often
- * each reason fired and how much it is capable of subtracting — never to an
- * invented point total.
+ * The chart above shows the number moving; this says what moved it. Since
+ * client-monitor 4.9.0 each reason key **is an issue type**, so every row here
+ * names a finding that is also in the issue list at the same moment, on the
+ * same entity — and the “How it counts” column says whether that finding
+ * zeroed, capped or subtracted, which is why the point totals rank the reasons
+ * rather than adding up to the score.
  */
 export function ScoreExplanation({ processedStats, warmupEnd }: ScoreExplanationProps) {
   const explanation = useMemo(
@@ -107,6 +108,7 @@ export function ScoreExplanation({ processedStats, warmupEnd }: ScoreExplanation
               {measured && <th className={styles.numeric}>Avg&nbsp;/&nbsp;peak</th>}
               <th className={styles.numeric}>Share</th>
               <th className={styles.numeric}>Max&nbsp;penalty</th>
+              <th>How&nbsp;it&nbsp;counts</th>
               <th>Raised on</th>
               <th>What it means</th>
             </tr>
@@ -145,6 +147,9 @@ export function ScoreExplanation({ processedStats, warmupEnd }: ScoreExplanation
                 <td className={styles.numeric}>
                   {r.meta.maxPenalty > 0 ? `−${r.meta.maxPenalty.toFixed(1)}` : '—'}
                 </td>
+                <td className={styles.scopes} title={r.meta.effect}>
+                  {GROUP_LABELS[r.meta.group]}
+                </td>
                 <td className={styles.scopes}>
                   {r.scopes.map((s) => SCOPE_LABELS[s]).join(', ')}
                   {r.entityCount > 1 && (
@@ -161,27 +166,39 @@ export function ScoreExplanation({ processedStats, warmupEnd }: ScoreExplanation
         </table>
       )}
 
+      {explanation.retiredKeys.length > 0 && (
+        <p className={styles.note}>
+          This capture predates client-monitor 4.9.0: {explanation.retiredKeys.length}{' '}
+          reason {explanation.retiredKeys.length === 1 ? 'key was' : 'keys were'} retired in that
+          release ({explanation.retiredKeys.join(', ')}). Its score came from thresholds inside the
+          calculator rather than from the open issues, so it is not comparable like for like with a
+          4.9.0 capture.
+        </p>
+      )}
+
       {explanation.unknownKeys.length > 0 && (
         <p className={styles.note}>
           {explanation.unknownKeys.length} reason{' '}
           {explanation.unknownKeys.length === 1 ? 'key is' : 'keys are'} not in this dashboard&apos;s
-          reference table ({explanation.unknownKeys.join(', ')}). The counts are still accurate — a
-          custom or newer score calculator can define its own keys.
+          4.9.0 reference table ({explanation.unknownKeys.join(', ')}). Since a reason key is an
+          issue type, these are most likely custom detectors or application-raised issues. The
+          counts are still accurate.
         </p>
       )}
 
       <p className={styles.footnote}>
         {measured ? (
           <>
-            Points come from the sample itself — schema 3.6.0 carries each reason with what it
-            subtracted. Share is of all points lost; a reason showing “—” came from an older sample
-            that named the reason without its magnitude.
+            Points come from the sample itself, and each key is the issue type that caused it.
+            Connectivity findings zero a score and pipeline-disruption findings cap it, so the
+            column totals rank the reasons rather than summing to the score — each monitor&apos;s
+            own score is the authority on what it actually reached.
           </>
         ) : (
           <>
-            These samples predate schema 3.6.0, so reason keys travel without their magnitudes. This
-            ranks by how often each fired and how much it is capable of subtracting — not by points
-            actually lost.
+            These samples name reasons without their magnitudes, so this ranks by how often each
+            fired and how much it is capable of subtracting — not by points actually lost. A
+            client-monitor 4.9.0 client always sends the magnitudes.
           </>
         )}
       </p>

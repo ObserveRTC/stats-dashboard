@@ -2,29 +2,44 @@
  * Why the client's quality score is the number it is.
  *
  * The score itself says how bad things were; it never says what was wrong.
- * `DefaultScoreCalculator` records that separately as reason keys, on the
- * client, on each peer connection and on each track.
+ * `DefaultScoreCalculator` records that separately as reason keys, on each peer
+ * connection and on each track.
  *
- * From client-monitor 4.7.0 the client entry carries **none of its own**: every
- * entity ships only what it is responsible for, and the client score subtracts
- * nothing directly. So `clientPoints` below is normally null on a 4.7 stream,
- * and the account is built from the components — which is where it always
- * belonged. Older streams that still carry the aggregate on the client entry
- * read the same way, they simply attribute more to `client`.
+ * ## Reading a 4.9.0 stream
  *
- * This walks all three,
- * counts how often each reason appeared, and assembles the account: how much
- * of the session was below par, which reason dominated, and where the trouble
- * was concentrated.
+ * Since client-monitor 4.9.0 **a reason key is an issue type**. The score is a
+ * reading of the open issues and nothing else, so every key here is also a
+ * string you will find in `clientIssues[]` of the same sample, on the same
+ * entity — the explanation and the issue list can no longer disagree. Before
+ * 4.9.0 the calculator carried thresholds of its own and invented key names
+ * (`high-rtt`, `low-fps`, `frozen-video`) for judgements no detector had made.
  *
- * Schema 3.6.0 put the magnitudes on the wire: `scoreReasons` became
- * `Record<reasonKey, pointsSubtracted>`, so for those samples this reports what
- * each reason actually cost rather than only how often it fired. Older samples
- * carry keys alone, and nothing here invents a number for them — when no sample
- * in the window carried magnitudes, `measured` is false and everything falls
- * back to ranking by frequency and by how much a reason is *capable* of costing.
- * A window that mixes vintages counts every occurrence but sums points only
- * from the ticks that reported them, and says so via `measuredTicks`.
+ * The client entry carries **none of its own** reasons: every entity ships only
+ * what it is responsible for, and the client score subtracts nothing directly —
+ * it is `5 - RMSE` over the five dimensions. So `clientPoints` below is normally
+ * null, and the account is built from the components, which is where it belongs.
+ *
+ * ## Why the totals are a ranking, not an arithmetic identity
+ *
+ * The four score categories do not combine by addition, so summing magnitudes
+ * over-counts on purpose-built cases:
+ *
+ *   - a **connectivity** reason zeroes its monitor outright;
+ *   - a **pipeline-disruption** reason *caps* the score, and only the deepest
+ *     cap applies — a second one in the same tick records what it would have
+ *     taken, not what it did;
+ *   - only **perceived-quality** and **transport-quality** genuinely subtract.
+ *
+ * What the totals are good for is ordering: the reason with the most points
+ * against it dominated the session, which is the question this box answers.
+ * `entityScore` on each component is the authority on what any one monitor
+ * actually scored.
+ *
+ * Magnitudes have been on the wire since schema 3.6.0 (`scoreReasons` as a
+ * `Record<reasonKey, pointsSubtracted>`) and a 4.9.0 client always sends them.
+ * A recording old enough to carry keys alone still reads: `measured` goes false
+ * and the ranking falls back to frequency and to how much a reason is *capable*
+ * of costing, rather than inventing a number.
  */
 
 import type { ProcessWebRTCStatsResult, ScoreSample } from './statsTypes.ts';
@@ -32,6 +47,7 @@ import {
   GROUP_LABELS,
   getScoreReasonMeta,
   isKnownScoreReason,
+  isRetiredScoreReason,
   type ScoreReasonGroup,
   type ScoreReasonMeta,
 } from '../schema/ScoreReasons.ts';
@@ -59,9 +75,9 @@ export const BAND_COLORS: Record<ScoreBand, string> = {
  * Render reason keys for a tooltip or a list, appending what each one cost.
  *
  * Schema ≥3.6 samples carry the magnitude next to the key, and a reader wants
- * to see it: "frozen-video −1.5" answers a question that "frozen-video" alone
- * only raises. Keys from older samples render bare rather than with a fake
- * "−0.0", so the two vintages stay visibly different.
+ * to see it: "video-flow-disrupted −4.0" answers a question that
+ * "video-flow-disrupted" alone only raises. Keys from older samples render bare
+ * rather than with a fake "−0.0", so the two vintages stay visibly different.
  *
  * A magnitude of 0 renders bare too. observer-js folds a pre-3.6 `string[]`
  * into the record shape with a magnitude of 0 on the way through, so "−0" in a
@@ -154,6 +170,15 @@ export interface ScoreExplanation {
   clientMeasuredTicks: number;
   /** Reason keys with no entry in the reference table. */
   unknownKeys: string[];
+  /**
+   * Keys client-monitor 4.9.0 retired.
+   *
+   * Not an error — it dates the recording. A window with any of these was
+   * written by a pre-4.9.0 client, whose score came from thresholds inside the
+   * calculator rather than from the issues, so it cannot be compared like for
+   * like against a 4.9.0 capture.
+   */
+  retiredKeys: string[];
   /** A short prose account, one sentence per point. */
   narrative: string[];
 }
@@ -174,6 +199,7 @@ const EMPTY: ScoreExplanation = {
   clientPoints: null,
   clientMeasuredTicks: 0,
   unknownKeys: [],
+  retiredKeys: [],
   narrative: [],
 };
 
@@ -316,8 +342,9 @@ export function buildScoreExplanation(
     }))
     // What the reason actually cost outranks how often it fired, once the wire
     // says so. Without magnitudes, fall back to frequency and then to how much
-    // the reason is *capable* of costing, so a rare `frozen-video` outranks an
-    // equally rare `high-volatile-bitrate`.
+    // the reason is *capable* of costing, so a rare `video-flow-disrupted`
+    // (4.0 at full weight) outranks an equally rare `audio-jitter-buffer-stress`
+    // (1.5).
     .sort(
       (a, b) =>
         (b.points ?? -1) - (a.points ?? -1) ||
@@ -374,7 +401,7 @@ export function buildScoreExplanation(
 
   if (totalOccurrences === 0) {
     narrative.push(
-      'No score reasons were recorded, so nothing subtracted from the maximum — either the session was clean, or this client does not send reason keys.',
+      'No score reasons were recorded, so nothing subtracted from the maximum. On a 4.9.0 client that is a real statement: the detectors ran and raised nothing.',
     );
   } else {
     const top = reasons[0];
@@ -394,7 +421,14 @@ export function buildScoreExplanation(
       }
       if (measuredTicks < totalOccurrences) {
         narrative.push(
-          `${totalOccurrences - measuredTicks} of those ${plural(totalOccurrences - measuredTicks, 'occurrence')} came from samples written before schema 3.6.0, which carried reason keys without magnitudes — they are counted here but contribute no points.`,
+          `${totalOccurrences - measuredTicks} of those ${plural(totalOccurrences - measuredTicks, 'occurrence')} came from samples that carried reason keys without magnitudes — they are counted here but contribute no points.`,
+        );
+      }
+
+      const capping = groups.find((g) => g.group === 'pipeline-disruption' || g.group === 'connectivity');
+      if (capping) {
+        narrative.push(
+          `Some of these are ${capping.label.toLowerCase()} findings, which cap or zero a score rather than subtracting from it — only the deepest one in a tick applies, so the totals above rank the reasons rather than adding up to the score.`,
         );
       }
     } else {
@@ -402,7 +436,7 @@ export function buildScoreExplanation(
         `The most frequent was “${top.meta.label}” (\`${top.meta.key}\`), in ${top.occurrences} ${plural(top.occurrences, 'tick')} — ${pct(top.share)} of everything recorded. ${top.meta.meaning}`,
       );
       narrative.push(
-        'These samples predate schema 3.6.0, so they name the reasons without saying what each one cost; the ranking above is by how often a reason fired, not by its measured weight.',
+        'These samples name the reasons without saying what each one cost, so the ranking above is by how often a reason fired and by how much it is capable of costing — not by points actually lost. A client-monitor 4.9.0 client always sends the magnitudes.',
       );
     }
 
@@ -439,7 +473,10 @@ export function buildScoreExplanation(
     totalPoints,
     clientPoints,
     clientMeasuredTicks,
-    unknownKeys: reasons.filter((r) => !isKnownScoreReason(r.meta.key)).map((r) => r.meta.key),
+    unknownKeys: reasons
+      .filter((r) => !isKnownScoreReason(r.meta.key) && !isRetiredScoreReason(r.meta.key))
+      .map((r) => r.meta.key),
+    retiredKeys: reasons.filter((r) => isRetiredScoreReason(r.meta.key)).map((r) => r.meta.key),
     narrative,
   };
 }

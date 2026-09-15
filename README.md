@@ -55,6 +55,7 @@ the container — one image runs against any bucket.
 | Variable | Required | Description |
 |---|---|---|
 | `S3_BUCKET` | ✓ | Bucket holding the `<roomId>/<callId>/…` folders |
+| `S3_PREFIX` | multi-tenant buckets | Key prefix every listing and read is scoped to, e.g. `rooms.polsl.pl/`. Blank (default) reads the whole bucket — see below |
 | `S3_ENDPOINT` | self-hosted / R2 | Full URL of the S3-compatible endpoint. Omit for AWS S3, which the SDK resolves from the region. |
 | `S3_REGION` | | Defaults to `us-east-1`. MinIO ignores it; R2 wants `auto`. |
 | `S3_ACCESS_KEY_ID` | | Omit both keys to use the SDK's credential chain — an EC2/ECS role, a mounted `~/.aws` profile |
@@ -134,6 +135,25 @@ produce a 503:
 If the dashboard comes up with an empty room list, it says so in a banner rather
 than leaving you to guess: a misconfigured bucket and an empty bucket look
 identical otherwise.
+
+### A bucket shared between tenants
+
+A media node serving several tenants writes one folder per tenant at the top:
+`<tenantFqdn>/<roomId>/<callId>/…`. The dashboard reads the first path segment
+as the room id, so pointed at the bucket root it shows one empty "room" per
+tenant. Scope it to one folder instead:
+
+```bash
+S3_PREFIX=rooms.polsl.pl/
+```
+
+Listings and reads then start inside that folder and keys are relativized on the
+way out, so room ids, links and presigned URLs look exactly as they do on a
+single-tenant bucket. Run one dashboard per tenant. Leading and trailing slashes
+are optional; blank is the default and reads the whole bucket.
+
+`GET /api/health` reports the resolved prefix — the quickest way to tell "scoped
+to the wrong folder" from "the bucket is empty", which look identical otherwise.
 
 ### Outbound network
 
@@ -297,6 +317,7 @@ differ by environment alone. `.env.example` documents every variable.
 |---|---|
 | `S3_BUCKET` | **Required.** Bucket holding the call folders |
 | `S3_ENDPOINT` | Storage endpoint. Omit for AWS S3 |
+| `S3_PREFIX` | Key prefix to scope to, for a bucket shared between tenants |
 | `S3_PUBLIC_ENDPOINT` | Endpoint to sign browser-facing URLs against, when it differs |
 | `S3_REGION` | Defaults to `us-east-1`; MinIO and R2 ignore it |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Omit to use the SDK's credential chain (an instance role, a mounted profile) |

@@ -1,7 +1,11 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import type { ClientSample } from '../../schema/ClientSample.ts';
-import { getIssueTypeMeta } from '../../schema/ClientIssueTypes.ts';
+import {
+  ISSUE_SCORE_CATEGORY_EFFECT,
+  ISSUE_SCORE_CATEGORY_LABELS,
+  getIssueTypeMeta,
+} from '../../schema/ClientIssueTypes.ts';
 import {
   cachedClientIssueEpisodes,
   formatIssueDuration,
@@ -260,6 +264,37 @@ export function ClientIssuesSection({ samples }: Props) {
               {isOpen && (
                 <div className={styles.accordionBody}>
                   {meta.summary && <p className={styles.typeMeaning}>{meta.summary}</p>}
+                  {/* What the finding costs and how it is priced. A raised issue
+                      and a lowered score are the same fact since 4.9.0, so the
+                      price belongs next to the finding rather than only in the
+                      score box. */}
+                  <div className={styles.typeScoring}>
+                    <span
+                      className={styles.typeBadge}
+                      data-score-category={meta.scoring.category}
+                      title={ISSUE_SCORE_CATEGORY_EFFECT[meta.scoring.category]}
+                    >
+                      {ISSUE_SCORE_CATEGORY_LABELS[meta.scoring.category]}
+                    </span>
+                    <span className={styles.typeBadge} title="Points this finding is worth at full severity, out of 5.">
+                      {meta.scoring.weight > 0
+                        ? `up to −${(meta.scoring.weight * 5).toFixed(2)} / 5`
+                        : 'unscored'}
+                    </span>
+                    {meta.scoring.severityField && (
+                      <span
+                        className={styles.typeBadge}
+                        title={`This detector measures how deep its finding is; the score scales the weight by the payload's ${meta.scoring.severityField}.`}
+                      >
+                        severity from {meta.scoring.severityField}
+                      </span>
+                    )}
+                    <span className={styles.typeBadge} title="The monitor that raises it, and therefore whose score it moves.">
+                      on {meta.scope}
+                    </span>
+                  </div>
+                  {meta.implication && <p className={styles.typeImplication}>{meta.implication}</p>}
+                  {meta.remedy && <p className={styles.typeRemedy}>{meta.remedy}</p>}
                   {list.map((episode, i) => {
                     const raise = formatPayloadObject(episode.payload);
                     const resolve = formatPayloadObject(episode.resolvePayload);
