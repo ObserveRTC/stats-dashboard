@@ -5,8 +5,18 @@ import styles from './Breadcrumbs.module.css';
 
 const LABELS = ['roomId', 'callId', 'clientId'] as const;
 
+/**
+ * Shorten an opaque id, leave a readable name alone.
+ *
+ * A room id is not necessarily a name. Deployments that turn on
+ * `<uuid>/<uuid>/` — two identical 36-character segments side by side, which
+ * is unreadable and, worse, looks like a bug. Anything that long with no
+ * spaces is an id rather than a name, so it is trimmed for display; the full
+ * value stays in the link and in the tooltip.
+ */
 function formatSegment(value: string): string {
-  return value;
+  const opaque = value.length > 20 && !value.includes(' ');
+  return opaque ? `${value.slice(0, 8)}…` : value;
 }
 
 export function Breadcrumbs() {
@@ -17,7 +27,9 @@ export function Breadcrumbs() {
     { label: 'Home', title: 'home', to: '/' },
     ...segments.map((seg, i) => ({
       label: formatSegment(decodeURIComponent(seg)),
-      title: LABELS[i] ?? `level ${i}`,
+      // The tooltip carries the whole value, so a shortened crumb is still
+      // copyable and identifiable.
+      title: `${LABELS[i] ?? `level ${i}`}: ${decodeURIComponent(seg)}`,
       to: '/' + segments.slice(0, i + 1).join('/'),
     })),
   ];
