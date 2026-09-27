@@ -25,6 +25,13 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * it and keys are relativized on the way out, so nothing downstream sees it.
  * Empty — the default — reads the whole bucket.
  *
+ * `S3_PROXY_STREAMS=true` turns the presigning off: the client `.jsonl` streams
+ * are then read by this server and piped to the browser, which never talks to
+ * storage at all. It costs this process the bytes it was avoiding — the reason
+ * presigning is the default — and buys a deployment where storage needs no
+ * public name and no credentials leave the cluster. That is the difference
+ * between publishing an S3 endpoint to the internet for one dashboard and not.
+ *
  * Those presigned URLs are why `S3_PUBLIC_ENDPOINT` exists. The server and the
  * browser do not always reach storage by the same name — inside a container
  * network it is `http://minio:9000`, from the user's machine it is
@@ -70,6 +77,8 @@ export interface StorageConfig {
   prefix: string;
   /** Endpoint to sign browser-facing URLs against, when it differs. */
   publicEndpoint?: string;
+  /** Stream client `.jsonl` through this server instead of presigning it. */
+  proxyStreams: boolean;
   bucket: string;
   region: string;
   forcePathStyle: boolean;
@@ -91,6 +100,10 @@ export function storageConfig(): StorageConfig {
     endpoint: process.env.S3_ENDPOINT || undefined,
     prefix: storagePrefix(),
     publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || undefined,
+    // Opt-in, and deliberately not inferred from a missing S3_PUBLIC_ENDPOINT:
+    // the common case for an unset public endpoint is that the server and the
+    // browser reach storage by the same name, where presigning is right.
+    proxyStreams: process.env.S3_PROXY_STREAMS === 'true',
     bucket: process.env.S3_BUCKET ?? '',
     region: process.env.S3_REGION || 'us-east-1',
     // Path style is what MinIO and most self-hosted gateways need; AWS and R2
@@ -283,6 +296,78 @@ export async function listObjects(prefix: string): Promise<ObjectEntry[]> {
 }
 
 /**
+ * Is this URL segment one we are willing to build a storage key out of?
+ *
+ * A security boundary rather than a tidy-up: room, call and client ids arrive
+ * from the URL, and a segment allowed to contain `/` or `..` reads outside its
+ * call folder — and outside `S3_PREFIX`, which is what a shared bucket relies
+ * on. An allowlist of shape, not a denylist of tricks.
+ */
+export function isPlainKeySegment(value: string): boolean {
+  if (!value || value.length > 200) return false;
+  return !(value.includes('/') || value.includes('\\') || value.includes('..'));
+}
+
+/**
+ * The key of one client's stream, or `undefined` when a segment is not safe.
+ *
+ * Here rather than in the route handlers so the presigning path and the proxy
+ * path cannot disagree about what a client's object is called, or about which
+ * ids are acceptable.
+ */
+export function clientStreamKey(roomId: string, callId: string, clientId: string): string | undefined {
+  if (![roomId, callId, clientId].every(isPlainKeySegment)) return undefined;
+
+  return `${roomId}/${callId}/${clientId}.jsonl`;
+}
+
+/**
+ * Where the browser fetches a client's stream from when `S3_PROXY_STREAMS` is on.
+ *
+ * Relative on purpose: the page's own origin is the one host a visitor is known
+ * to reach, and keeping the fetch there is what lets storage have no public name
+ * at all. Every segment is encoded, so an id cannot inject a path.
+ */
+export function clientStreamPath(roomId: string, callId: string, clientId: string): string {
+  return `/api/${[roomId, callId, clientId].map(encodeURIComponent).join('/')}/raw`;
+}
+
+/** One object, as a stream this server can pipe straight to a response. */
+export interface ObjectStream {
+  body: ReadableStream<Uint8Array>;
+  contentType?: string;
+  contentLength?: number;
+  lastModified?: Date;
+  etag?: string;
+}
+
+/**
+ * Read one object through this server, rather than handing out a URL for it.
+ *
+ * The counterpart to `presignGet`, for `S3_PROXY_STREAMS`. Returns a web stream
+ * so a route handler can pass it to `new Response(...)` and never hold the whole
+ * object in memory — a `.jsonl` for a long call is tens of megabytes, and
+ * buffering it here would make a handful of readers a memory problem.
+ *
+ * `key` is relative to `S3_PREFIX`, like everything else in this module.
+ * Throws whatever the SDK throws; a missing object is a `NoSuchKey`.
+ */
+export async function getObjectStream(key: string): Promise<ObjectStream> {
+  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: toStorageKey(key) });
+  const res = await s3Client().send(cmd);
+
+  if (!res.Body) throw new Error(`object has no body [key: ${key}]`);
+
+  return {
+    body: res.Body.transformToWebStream(),
+    contentType: res.ContentType,
+    contentLength: res.ContentLength,
+    lastModified: res.LastModified,
+    etag: res.ETag,
+  };
+}
+
+/**
  * Generate a presigned GET URL for a private object.
  * The URL is valid for S3_PRESIGN_TTL seconds and requires no credentials from
  * the browser.
@@ -315,15 +400,18 @@ export function announceStorageConfig(): void {
   const problems = storageConfigProblems(config);
 
   console.info(
-    '[storage] endpoint=%s bucket=%s prefix=%s region=%s pathStyle=%s credentials=%s presignTtl=%ss%s',
+    '[storage] endpoint=%s bucket=%s prefix=%s region=%s pathStyle=%s credentials=%s streams=%s%s%s',
     config.endpoint ?? '(aws default)',
     config.bucket || '(unset)',
     config.prefix || '(root)',
     config.region,
     config.forcePathStyle,
     config.hasCredentials ? 'env' : 'sdk-chain',
-    config.presignTtl,
+    // Which of the two delivery paths is live is the first thing to know when a
+    // call page will not open, so it is on the line that gets pasted into an issue.
+    config.proxyStreams ? 'proxied' : `presigned presignTtl=${config.presignTtl}s`,
     config.publicEndpoint ? ` publicEndpoint=${config.publicEndpoint}` : '',
+    config.proxyStreams && config.publicEndpoint ? ' (publicEndpoint unused while proxying)' : '',
   );
 
   for (const problem of problems) {

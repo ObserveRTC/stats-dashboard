@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test:router-mapping": "node --experimental-strip-types scripts/routerServerData.test.ts",
     "test:fixture": "node --experimental-strip-types scripts/realFixture.test.ts",
-    "test": "npm run test:router-mapping && npm run test:fixture && npm run test:joins && npm run test:issue-lanes && npm run test:transport-timeline && npm run test:score-explanation && npm run test:call-summary && npm run test:tab-visibility && npm run test:csv && npm run test:sample-reasons && npm run test:router-entities && npm run test:call-dashboard && npm run test:worker-requests && npm run test:ice-candidate-story && npm run test:storage-config && npm run test:help",
+    "test": "npm run test:router-mapping && npm run test:fixture && npm run test:joins && npm run test:issue-lanes && npm run test:transport-timeline && npm run test:score-explanation && npm run test:call-summary && npm run test:tab-visibility && npm run test:csv && npm run test:sample-reasons && npm run test:router-entities && npm run test:call-dashboard && npm run test:worker-requests && npm run test:ice-candidate-story && npm run test:storage-config && npm run test:proxy-streams && npm run test:help",
     "test:joins": "node --experimental-strip-types scripts/clientJoins.test.ts",
     "test:issue-lanes": "node --experimental-strip-types scripts/issueLanes.test.ts",
     "test:transport-timeline": "node --experimental-strip-types scripts/transportTimeline.test.ts",
@@ -27,7 +27,8 @@
     "test:worker-requests": "node --experimental-strip-types scripts/workerRequests.test.ts",
     "test:ice-candidate-story": "node --experimental-strip-types scripts/iceCandidateStory.test.ts",
     "test:storage-config": "node --experimental-strip-types scripts/storageConfig.test.ts",
-    "test:help": "node --experimental-strip-types scripts/help.test.ts"
+    "test:help": "node --experimental-strip-types scripts/help.test.ts",
+    "test:proxy-streams": "node --experimental-strip-types scripts/proxyStreams.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1061.0",
