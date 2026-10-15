@@ -249,6 +249,35 @@ export function storageConfigReport(config = storageConfig()): StorageConfigRepo
     );
   }
 
+  // The tenant prefix repeating a root's own name, which is what a deployment
+  // written before the roots were split looks like after an upgrade: S3_PREFIX
+  // used to BE the sample root, so `S3_PREFIX=samples/` was correct then and
+  // resolves to `samples/samples/` now. Nothing errors. The bucket is read at a
+  // path nothing has ever written to, so every listing is empty and the
+  // dashboard shows no rooms at all — while `?deep=1` still answers `ok`,
+  // because an empty listing is a successful listing.
+  //
+  // This cost an afternoon, which is the only reason it is worth a check this
+  // specific. A warning rather than a problem: `samples/samples/` is a legal
+  // layout, just an unlikely one, and refusing traffic over a guess would turn
+  // a cosmetic mistake into an outage.
+  const tenantTail = config.prefix.replace(/\/$/, '').split('/').pop() ?? '';
+  for (const [name, root] of [
+    ['S3_SAMPLES_PREFIX', config.samples],
+    ['S3_DIGEST_PREFIX', config.digests],
+  ] as const) {
+    const rootHead = root.replace(/\/$/, '').split('/')[0] ?? '';
+    if (tenantTail && rootHead && tenantTail === rootHead) {
+      warnings.push(
+        `S3_PREFIX ends with "${tenantTail}/" and ${name} starts with it too, so that space ` +
+          `resolves to "${config.prefix}${root}". If this deployment predates the split between ` +
+          `the sample and digest roots, S3_PREFIX was the sample root then and should be the ` +
+          `tenant folder now — set S3_PREFIX="" and ${name}="${tenantTail}/". Listings under a ` +
+          `path nothing writes to come back empty rather than failing, so nothing else will say so.`,
+      );
+    }
+  }
+
   if (!config.hasCredentials) {
     warnings.push(
       'S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY are not set — falling back to the SDK credential ' +

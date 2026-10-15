@@ -314,4 +314,57 @@ check('the resolved roots are on the config, so a log line can name them', () =>
   });
 });
 
+// The failure this was written for: a deployment that predates the split
+// between the sample and digest roots keeps S3_PREFIX="samples/", which used to
+// BE the sample root, and the app now composes it with a samples root of its
+// own. Nothing errors. Every listing is empty because nothing has ever written
+// to `samples/samples/`, and `?deep=1` reports ok because an empty listing
+// succeeded. The dashboard showed no rooms and the health endpoint said it was
+// fine, which is the exact combination a warning has to break.
+check('a tenant prefix that repeats the samples root is a warning', () => {
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'samples', S3_ACCESS_KEY_ID: 'k', S3_SECRET_ACCESS_KEY: 's' }, () => {
+    const { problems, warnings } = storageConfigReport();
+    // Not fatal: samples/samples/ is legal, just not what anybody means.
+    assert.deepEqual(problems, []);
+    const hit = warnings.filter((w) => w.includes('S3_SAMPLES_PREFIX starts with it too'));
+    assert.equal(hit.length, 1, `expected one warning, got: ${warnings.join(' | ')}`);
+    // It has to name the fix, not just the symptom — whoever reads this is
+    // looking at an empty dashboard and has no reason to suspect a prefix.
+    assert.ok(hit[0].includes('S3_PREFIX=""'), hit[0]);
+    assert.ok(hit[0].includes('resolves to "samples/samples/"'), hit[0]);
+  });
+});
+
+check('the same trap on the digest root', () => {
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'digests/', S3_ACCESS_KEY_ID: 'k', S3_SECRET_ACCESS_KEY: 's' }, () => {
+    const { warnings } = storageConfigReport();
+    assert.equal(warnings.filter((w) => w.includes('S3_DIGEST_PREFIX starts with it too')).length, 1);
+  });
+});
+
+check('the fixed configuration is silent', () => {
+  // What 03-dashboard.yaml says now: no tenant, both roots named explicitly.
+  withEnv({
+    S3_BUCKET: 'b', S3_PREFIX: '', S3_SAMPLES_PREFIX: 'samples/', S3_DIGEST_PREFIX: 'digests/',
+    S3_ACCESS_KEY_ID: 'k', S3_SECRET_ACCESS_KEY: 's',
+  }, () => {
+    const { problems, warnings } = storageConfigReport();
+    assert.deepEqual(problems, []);
+    assert.deepEqual(warnings, []);
+  });
+});
+
+check('a real tenant folder that merely contains the word is not flagged', () => {
+  // `acme/samples/` is the intended shape of a shared bucket. Only a tenant
+  // whose LAST segment repeats the root's FIRST one is suspicious.
+  withEnv({
+    S3_BUCKET: 'b', S3_PREFIX: 'acme/', S3_SAMPLES_PREFIX: 'samples/',
+    S3_ACCESS_KEY_ID: 'k', S3_SECRET_ACCESS_KEY: 's',
+  }, () => {
+    const { problems, warnings } = storageConfigReport();
+    assert.deepEqual(problems, []);
+    assert.deepEqual(warnings, []);
+  });
+});
+
 console.log(`\n${passed} checks passed`);
