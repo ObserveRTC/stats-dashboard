@@ -1,0 +1,93 @@
+# The digest processor — the second entrypoint of this repository.
+#
+#   docker build -f Dockerfile.digest -t observertc/digest-server:local .
+#
+# Note the context: the repo ROOT, not a subdirectory. That is the whole reason
+# this file lives up here rather than beside the code, and it is what let
+# `vendor/digest-schema/` and its sync script and its drift check be deleted. A
+# Docker context cannot reach outside the directory it is given, so an image
+# built from the app's own folder had to carry its own copy of the contract. Built
+# from here, the contract is simply in the context.
+#
+# ## This is a separate application that shares a repository
+#
+# It shares the checkout, the lockfile and the version. It does NOT share a
+# process with the dashboard, and that separation is load-bearing in two ways:
+#
+#   memory   the dashboard streams objects through itself and never holds one
+#            whole, which is what lets its limit be 512Mi. This decodes a
+#            client's JSONL in full to difference the counters. One process
+#            would mean the public page and the batch job competing for one
+#            limit, and a long call being digested could take the page down.
+#
+#   writes   the dashboard has no write path at all — `scripts/noWritePath.test.ts`
+#            fails the build if anything reachable from app/ grows one. This
+#            image is the only thing here that writes, and nothing routes to it
+#            from the internet. "The public app cannot write" stays a property
+#            of the code rather than of a configuration flag.
+#
+# ## About the image size
+#
+# One package.json means `npm ci --omit=dev` installs the dashboard's runtime
+# dependencies too — Next, React, d3 — none of which this process imports. The
+# image is a few hundred MB larger than it needs to be, and that is a deliberate
+# trade: the alternative is a second dependency manifest without a lockfile,
+# which buys a smaller image by giving up the guarantee that what runs here is
+# what was tested. If the size ever matters, the fix is npm workspaces with the
+# dashboard moved under apps/ — not a second lockfile.
+#
+# Two stages so the runtime image carries no dev dependencies and no npm cache.
+# There is nothing to compile: this half of the repo is plain ESM.
+
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+# The lockfile first, on its own layer: dependencies change far less often than
+# source, so a code edit does not re-resolve the tree.
+COPY package.json package-lock.json ./
+
+# `npm ci --omit=dev` rather than `npm install`: it installs exactly the
+# lockfile, fails if package.json and the lockfile disagree, and never writes a
+# new lockfile inside the image.
+RUN npm ci --omit=dev
+
+
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    PORT=8787 \
+    HOSTNAME=0.0.0.0
+
+# Node's own non-root user, which the base image already creates.
+RUN mkdir -p /app && chown node:node /app
+
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package.json ./
+# Only the modules. test/ and fixtures/ live in the same folder and are not
+# wanted in a runtime image, so this names *.mjs rather than copying the tree.
+COPY --chown=node:node src/digest-server/*.mjs ./src/digest-server/
+
+# The contract, at the path registry.mjs resolves (../../digest-schema).
+# Only the registry: the JSON Schema files and the generators are build-time
+# artifacts, and the precompiled validators are a test dependency — nothing
+# under src/digest-server imports them. Copied as its own layer so a missing
+# contract is a build failure here rather than a runtime one in the cluster.
+COPY --chown=node:node digest-schema/registry ./digest-schema/registry
+
+USER node
+
+EXPOSE 8787
+
+# The app's own health endpoint: 200 once S3_BUCKET resolves, 503 with a
+# `problem` field when it does not. No shell, so a missing curl cannot make a
+# healthy container look unhealthy.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["node", "-e", "require('http').get({host:'127.0.0.1',port:process.env.PORT||8787,path:'/healthz'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+
+# Exec form, so the process is PID 1 and receives SIGTERM directly — a shell
+# wrapper would swallow it and the container would take the full grace period
+# to stop on every rollout.
+CMD ["node", "src/digest-server/server.mjs"]

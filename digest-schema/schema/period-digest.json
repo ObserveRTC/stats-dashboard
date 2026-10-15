@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.observertc.org/digest/v1/period-digest.json",
+  "title": "Period digest, version 1",
+  "description": "One UTC day or month: counts, exposure, distributions, cohort breakdowns, per-bucket activity and a ranked worst-call list.\n\nThe arithmetic rules here are the substance of the contract, because every one of them has a plausible wrong answer. Additive exposure and numerator/denominator fields sum across periods. `callsWithExposure` and `largestCallPeakParticipants` do not — the first must be deduplicated by call identity across the days of a month, the second is a maximum. `findingCounts[].activeAtEnd` is a boundary evaluation and is not additive either. No average of averages, medians or percentiles anywhere.\n\nA month therefore cannot be produced from anonymous daily totals. It needs a persisted per-call contribution index to deduplicate membership, replace late outcomes and evaluate boundary state. That index is the producer's business and is never a UI payload.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "tenantId",
+    "period",
+    "id",
+    "range",
+    "revision",
+    "provenance",
+    "completeness",
+    "coverage",
+    "totals",
+    "joins",
+    "impairments",
+    "metrics",
+    "findingCounts",
+    "cohorts",
+    "buckets",
+    "worstCalls",
+    "callSearchResourceId"
+  ],
+  "properties": {
+    "kind": { "const": "period-digest" },
+    "schemaVersion": { "const": 1 },
+    "tenantId": { "$ref": "common.json#/$defs/opaqueId" },
+    "period": { "enum": ["day", "month"] },
+
+    "id": {
+      "description": "`YYYY-MM-DD` for a day, `YYYY-MM` for a month, UTC. Validated against `period` below, and round-tripped through a real date by the conformance suite — `2026-02-31` matches the pattern and is not a day.",
+      "type": "string",
+      "minLength": 7,
+      "maxLength": 10
+    },
+
+    "range": {
+      "description": "The period's own UTC bounds, half-open. Exposure is clipped to it, including for calls that started earlier.",
+      "$ref": "common.json#/$defs/timeRange"
+    },
+
+    "revision": { "$ref": "common.json#/$defs/opaqueId" },
+    "provenance": { "$ref": "common.json#/$defs/provenance" },
+    "completeness": { "$ref": "common.json#/$defs/completeness" },
+
+    "coverage": {
+      "description": "Classifies every indexed candidate call. readable + pending + failed + unknown must equal indexedCalls, which the conformance suite checks. A readable digest may itself be partial, so these counts say nothing about measurement quality.\n\nChild periods are the month's expected and included UTC days, or a day's 24 expected hours and the hours whose input inventory was successfully evaluated. A successfully evaluated empty bucket is a verified zero; an unevaluated one must never be presented as verified absence of traffic.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "indexedCalls",
+        "readableCallDigests",
+        "pendingCallDigests",
+        "failedCallDigests",
+        "unknownCallDigests",
+        "expectedChildPeriods",
+        "includedChildPeriods"
+      ],
+      "properties": {
+        "indexedCalls": { "$ref": "common.json#/$defs/count" },
+        "readableCallDigests": { "$ref": "common.json#/$defs/count" },
+        "pendingCallDigests": { "$ref": "common.json#/$defs/count" },
+        "failedCallDigests": { "$ref": "common.json#/$defs/count" },
+        "unknownCallDigests": { "$ref": "common.json#/$defs/count" },
+        "expectedChildPeriods": { "$ref": "common.json#/$defs/count" },
+        "includedChildPeriods": { "$ref": "common.json#/$defs/count" }
+      }
+    },
+
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "callsStarted",
+        "callsWithExposure",
+        "participantSessionsStarted",
+        "observedParticipantMs",
+        "connectedParticipantMs",
+        "callExposureMs",
+        "largestCallPeakParticipants"
+      ],
+      "properties": {
+        "callsStarted": {
+          "description": "Calls whose known start falls inside the period. Calls with an unknown start are not counted here and make the population partial rather than being silently omitted.",
+          "$ref": "common.json#/$defs/count"
+        },
+        "callsWithExposure": {
+          "description": "Each call with positive call or participant observation exposure in this period, counted once. **Not additive**: a month must deduplicate by call identity, because a call spanning three days would otherwise be counted three times.",
+          "$ref": "common.json#/$defs/count"
+        },
+        "participantSessionsStarted": {
+          "description": "By known membership start. A summary-only call's span may support call exposure but does not license inferred participant starts.",
+          "$ref": "common.json#/$defs/count"
+        },
+        "observedParticipantMs": {
+          "description": "Additive. Clipped to the period.",
+          "$ref": "common.json#/$defs/durationMs"
+        },
+        "connectedParticipantMs": { "$ref": "common.json#/$defs/nullableDurationMs" },
+        "callExposureMs": {
+          "description": "Call-time, not participant-time: the two are different denominators and must never be mixed. Additive, clipped to the period.",
+          "$ref": "common.json#/$defs/durationMs"
+        },
+        "largestCallPeakParticipants": {
+          "description": "The biggest single call's peak. **Not additive and not global concurrency** — a month takes the maximum of its days. The UI must label it as one call's peak, never as how many people were on the platform at once.",
+          "$ref": "common.json#/$defs/nullableCount"
+        }
+      }
+    },
+
+    "joins": {
+      "description": "Assigned to attempt start time. On reprocessing, an outcome replaces the prior result rather than adding to it. Attempts never assigned a call contribute here but not to call counts — a failed attempt must not invent a synthetic successful call.",
+      "$ref": "common.json#/$defs/joinAggregate"
+    },
+
+    "impairments": { "$ref": "common.json#/$defs/impairmentExposures" },
+    "metrics": { "$ref": "common.json#/$defs/metricAggregates" },
+
+    "findingCounts": {
+      "description": "Assigned by raise time and deduplicated by stable finding identity.",
+      "$ref": "common.json#/$defs/findingCounts"
+    },
+
+    "cohorts": {
+      "description": "Marginal totals per dimension value. Null is the unknown cohort and is never discarded. Dimensions may not be cross-combined from these margins — a combined filter requires the server's call/participant contribution query, and the UI advertises which combinations are supported.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/cohortAggregate" },
+      "maxItems": 2048
+    },
+
+    "buckets": {
+      "description": "A day's 24 UTC hours, or a month's UTC days. Unavailable buckets keep their own completeness so a chart can draw a gap rather than interpolate through it.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/periodBucket" },
+      "maxItems": 31
+    },
+
+    "worstCalls": {
+      "description": "At most 20, ordered by impaired participant milliseconds descending, then impairment share descending, then call id ascending. Exposure clipped to this period, using all-category union exposure rather than a sum of categories. Calls with no assessed evidence are excluded and stay discoverable through missing-data filters. A period with no observed impairment has an empty ranking, and the UI must not substitute a ranking of its own.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/rankedCall" },
+      "maxItems": 20
+    },
+
+    "callSearchResourceId": {
+      "description": "The paginated, filterable call list for this period. Read against this digest's revision.",
+      "$ref": "common.json#/$defs/opaqueId"
+    }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "period": { "const": "day" } }, "required": ["period"] },
+      "then": {
+        "properties": {
+          "id": { "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "buckets": { "maxItems": 24 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "period": { "const": "month" } }, "required": ["period"] },
+      "then": { "properties": { "id": { "pattern": "^\\d{4}-\\d{2}$" } } }
+    }
+  ],
+
+  "$defs": {
+    "cohortAggregate": {
+      "title": "Exposure and metrics for one dimension value",
+      "description": "Exposure is assigned to the value held during each interval, so a dimension that changes mid-call splits its exposure across values rather than attributing all of it to the last one. Values of a single-valued dimension partition the eligible exposure; multi-valued SFU participation is assigned by an explicit path or ownership policy and must not duplicate overall participant time. Ambiguous intervals go to the null cohort.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "value", "observedParticipantMs", "impairments", "metrics"],
+      "properties": {
+        "dimension": { "$ref": "common.json#/$defs/dimension" },
+        "value": {
+          "description": "Null is the unknown cohort — a real population, not an absence to drop.",
+          "oneOf": [{ "type": "string", "maxLength": 256 }, { "type": "null" }]
+        },
+        "observedParticipantMs": { "$ref": "common.json#/$defs/durationMs" },
+        "impairments": { "$ref": "common.json#/$defs/impairmentExposures" },
+        "metrics": { "$ref": "common.json#/$defs/metricAggregates" }
+      }
+    },
+
+    "periodBucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["range", "completeness", "callsStarted", "observedParticipantMs", "impairments"],
+      "properties": {
+        "range": { "$ref": "common.json#/$defs/timeRange" },
+        "completeness": { "$ref": "common.json#/$defs/completeness" },
+        "callsStarted": { "$ref": "common.json#/$defs/count" },
+        "observedParticipantMs": { "$ref": "common.json#/$defs/durationMs" },
+        "impairments": { "$ref": "common.json#/$defs/impairmentExposures" }
+      }
+    },
+
+    "rankedCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "callId",
+        "roomId",
+        "digestRevision",
+        "startedAt",
+        "impairedParticipantMs",
+        "assessedParticipantMs",
+        "completeness"
+      ],
+      "properties": {
+        "callId": { "$ref": "common.json#/$defs/opaqueId" },
+        "roomId": { "oneOf": [{ "$ref": "common.json#/$defs/opaqueId" }, { "type": "null" }] },
+        "digestRevision": {
+          "description": "The call digest generation this row was ranked from. Following the row pins that revision, so a reader never lands on figures newer than the ranking that sent it there.",
+          "$ref": "common.json#/$defs/opaqueId"
+        },
+        "startedAt": { "oneOf": [{ "$ref": "common.json#/$defs/epochMs" }, { "type": "null" }] },
+        "impairedParticipantMs": { "$ref": "common.json#/$defs/durationMs" },
+        "assessedParticipantMs": {
+          "description": "The denominator for the impairment share. Zero here means no assessed evidence, which excludes the call from ranking — so a ranked row always has a positive value.",
+          "$ref": "common.json#/$defs/durationMs"
+        },
+        "completeness": { "$ref": "common.json#/$defs/completeness" }
+      }
+    }
+  }
+}

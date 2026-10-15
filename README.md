@@ -55,7 +55,9 @@ the container — one image runs against any bucket.
 | Variable | Required | Description |
 |---|---|---|
 | `S3_BUCKET` | ✓ | Bucket holding the `<roomId>/<callId>/…` folders |
-| `S3_PREFIX` | multi-tenant buckets | Key prefix every listing and read is scoped to, e.g. `rooms.polsl.pl/`. Blank (default) reads the whole bucket — see below |
+| `S3_PREFIX` | multi-tenant buckets | Key prefix every listing and read is scoped to, e.g. `acme.example.com/`. Blank (default) reads the whole bucket — see below |
+| `S3_SAMPLES_PREFIX` | | The call samples root inside the tenant. Default `samples/`; set empty for a bucket filled before the split |
+| `S3_DIGEST_PREFIX` | | The day and month digests the dashboard reads. Default `digests/` |
 | `S3_ENDPOINT` | self-hosted / R2 | Full URL of the S3-compatible endpoint. Omit for AWS S3, which the SDK resolves from the region. |
 | `S3_REGION` | | Defaults to `us-east-1`. MinIO ignores it; R2 wants `auto`. |
 | `S3_ACCESS_KEY_ID` | | Omit both keys to use the SDK's credential chain — an EC2/ECS role, a mounted `~/.aws` profile |
@@ -144,7 +146,7 @@ as the room id, so pointed at the bucket root it shows one empty "room" per
 tenant. Scope it to one folder instead:
 
 ```bash
-S3_PREFIX=rooms.polsl.pl/
+S3_PREFIX=acme.example.com/
 ```
 
 Listings and reads then start inside that folder and keys are relativized on the
@@ -154,6 +156,35 @@ are optional; blank is the default and reads the whole bucket.
 
 `GET /api/health` reports the resolved prefix — the quickest way to tell "scoped
 to the wrong folder" from "the bucket is empty", which look identical otherwise.
+
+### What lives where in the bucket
+
+Three roots inside the tenant folder, written by three different things at three
+different times:
+
+The dashboard reads two roots and writes nothing:
+
+```
+<tenant>/<samples>/<roomId>/<callId>/<clientId>.jsonl    the call recordings
+<tenant>/<digests>/<YYYY-MM>/<YYYY-MM-DD>.json           one day, added up
+<tenant>/<digests>/<YYYY-MM>.json                        one month, added up
+```
+
+The samples root is keyed by room, which is right for opening a call you already
+know about and wrong for every question that starts with a date — answering
+"what happened on the 3rd" from it means scanning the bucket. The **digest** is
+the period already added up, so the homepage is one GET however busy the day
+was.
+
+**Producing the digests is somebody else's job.** Point `S3_DIGEST_PREFIX` at
+whatever root they are written to; the only coupling is the key layout and the
+document shape, both in
+[`docs/storage-layout.md`](docs/storage-layout.md). Nothing has to exist — a
+period with no digest says so on the page, and the dashboard will not go and
+count calls instead. Anything else in the bucket is none of its business.
+
+Two roots and not one because they have two lifetimes: samples are swept by
+retention, digests are kept and belong in a cheaper storage class.
 
 ### Outbound network
 
@@ -318,6 +349,7 @@ differ by environment alone. `.env.example` documents every variable.
 | `S3_BUCKET` | **Required.** Bucket holding the call folders |
 | `S3_ENDPOINT` | Storage endpoint. Omit for AWS S3 |
 | `S3_PREFIX` | Key prefix to scope to, for a bucket shared between tenants |
+| `S3_SAMPLES_PREFIX` / `S3_DIGEST_PREFIX` | The two roots inside the tenant — see [`docs/storage-layout.md`](docs/storage-layout.md) |
 | `S3_PUBLIC_ENDPOINT` | Endpoint to sign browser-facing URLs against, when it differs |
 | `S3_REGION` | Defaults to `us-east-1`; MinIO and R2 ignore it |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Omit to use the SDK's credential chain (an instance role, a mounted profile) |

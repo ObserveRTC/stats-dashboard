@@ -1,0 +1,440 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.observertc.org/digest/v1/common.json",
+  "title": "Analytics digest shared types, version 1",
+  "description": "Shared serialization types for the analytics digest contract v1. Nothing here resolves over the network: the $id values are stable identifiers, not endpoints. Every constraint in this file is one the contract states in prose; rules that span two documents (histogram weight length against its definition, the join partition sum, exposure clipping) cannot be expressed in JSON Schema and live in the conformance suite instead.",
+  "$defs": {
+    "epochMs": {
+      "title": "UTC epoch milliseconds",
+      "description": "Integer, not a float: a fractional millisecond would make two timestamps incomparable for the interval arithmetic every metric depends on.",
+      "type": "integer",
+      "minimum": -8640000000000000,
+      "maximum": 8640000000000000
+    },
+
+    "durationMs": {
+      "title": "A duration in milliseconds",
+      "description": "Nonnegative. Fractional durations are allowed because a duration-weighted mean divides by one.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+
+    "count": {
+      "title": "A nonnegative integer count",
+      "description": "Bounded by Number.MAX_SAFE_INTEGER per the contract's number rule: beyond it a JSON number no longer round-trips, so the producer must mark the measurement unavailable with a warning rather than round silently.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+
+    "nullableCount": {
+      "description": "A count, or null for unknown. Never zero and never -1 as a sentinel.",
+      "oneOf": [{ "$ref": "#/$defs/count" }, { "type": "null" }]
+    },
+
+    "nullableDurationMs": {
+      "oneOf": [{ "$ref": "#/$defs/durationMs" }, { "type": "null" }]
+    },
+
+    "finiteNumber": {
+      "description": "A finite JSON number. JSON has no NaN or Infinity literal, so `type: number` already excludes them; this exists to say so at the point of use.",
+      "type": "number"
+    },
+
+    "ratio": {
+      "title": "A fraction from 0 to 1",
+      "description": "Never 0-100. The UI may format as a percentage; the wire value is always the fraction.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+
+    "opaqueId": {
+      "title": "An opaque identifier",
+      "description": "Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+
+    "reasonCode": {
+      "title": "A stable machine reason code",
+      "description": "Looked up in the reason-code label map shipped with the contract. An unknown code stays visible through a readable fallback rather than being dropped, so the pattern is permissive by design: a producer may emit a code this registry version has never seen.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$"
+    },
+
+    "reasonCodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reasonCode" },
+      "maxItems": 64
+    },
+
+    "timeRange": {
+      "title": "A half-open interval [startAt, endAt)",
+      "description": "Half-open so adjacent intervals tile without double-counting the shared instant — which is what keeps a union of observation intervals from over-reporting exposure. An event may use startAt === endAt and adds no duration.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startAt", "endAt"],
+      "properties": {
+        "startAt": { "$ref": "#/$defs/epochMs" },
+        "endAt": { "$ref": "#/$defs/epochMs" }
+      }
+    },
+
+    "completeness": {
+      "title": "How complete the sources behind a figure were",
+      "description": "Distinct from metric measurability and from call lifecycle. A complete source set can still yield an unavailable metric, and an open call can have complete sources so far.",
+      "enum": ["complete", "partial", "unknown"]
+    },
+
+    "capabilityState": {
+      "enum": ["available", "partial", "unavailable"]
+    },
+
+    "capability": {
+      "title": "Whether a section could be produced, and why not",
+      "description": "Reflects measured evidence and producer support, not the mere existence of a schema field. `reasons` is required even when available, where it is empty — an unavailable capability with no reason is the failure this shape exists to prevent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reasons"],
+      "properties": {
+        "state": { "$ref": "#/$defs/capabilityState" },
+        "reasons": { "$ref": "#/$defs/reasonCodes" }
+      },
+      "if": { "properties": { "state": { "const": "unavailable" } } },
+      "then": { "properties": { "reasons": { "minItems": 1 } } }
+    },
+
+    "capabilityMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/capability" },
+      "propertyNames": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+
+    "dimension": {
+      "title": "A cohort dimension",
+      "description": "`region` means the declared application or deployment region, never a region inferred from an IP address.",
+      "enum": [
+        "browser",
+        "browserMajorVersion",
+        "os",
+        "appVersion",
+        "sdkVersion",
+        "producer",
+        "region",
+        "sfuId",
+        "turnServer"
+      ]
+    },
+
+    "subjectKind": {
+      "enum": ["call", "participant", "stream", "transport"]
+    },
+
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/subjectKind" },
+        "id": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+
+    "evidenceRef": {
+      "title": "A pointer to an authorized logical source record",
+      "description": "Never a credential and never a presigned URL. `sourceId` joins to a Source in the digest; the rest narrows to a record, a stat and an instant where those are known. Resolving one into a raw-evidence view goes through server authorization.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "at", "recordId", "statId"],
+      "properties": {
+        "sourceId": { "$ref": "#/$defs/opaqueId" },
+        "at": { "oneOf": [{ "$ref": "#/$defs/epochMs" }, { "type": "null" }] },
+        "recordId": { "oneOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }] },
+        "statId": { "oneOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }] }
+      }
+    },
+
+    "evidenceRefs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceRef" },
+      "maxItems": 256
+    },
+
+    "resourceRef": {
+      "title": "A pointer to a paginated detail resource",
+      "description": "`records` is the total the producer wrote, so a reader can show a count without paging to the end. A null ResourceRef on a digest means the detail is unavailable; a present ref with records 0 means it was evaluated and is empty.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resourceId", "records"],
+      "properties": {
+        "resourceId": { "$ref": "#/$defs/opaqueId" },
+        "records": { "$ref": "#/$defs/count" }
+      }
+    },
+
+    "nullableResourceRef": {
+      "oneOf": [{ "$ref": "#/$defs/resourceRef" }, { "type": "null" }]
+    },
+
+    "provenance": {
+      "title": "Which code and configuration produced a figure",
+      "description": "`processorVersion` and `policyId` identify immutable calculation code and configuration; figures from incompatible policies may not be combined. `sourceRevision` hashes the canonical input manifest together with policy identity, so it changes when a late record arrives or a source is corrected.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["processorVersion", "policyId", "sourceRevision", "generatedAt"],
+      "properties": {
+        "processorVersion": { "$ref": "#/$defs/opaqueId" },
+        "policyId": { "$ref": "#/$defs/opaqueId" },
+        "sourceRevision": { "$ref": "#/$defs/opaqueId" },
+        "generatedAt": { "$ref": "#/$defs/epochMs" }
+      }
+    },
+
+    "sourceKind": {
+      "enum": [
+        "client-samples",
+        "observer-summary",
+        "observer-events",
+        "application-events",
+        "router-samples"
+      ]
+    },
+
+    "source": {
+      "title": "One input the digest was built from",
+      "description": "`revision` is an immutable version id or content hash, never a mutable path on its own — that is what makes a retry deterministic and a late arrival detectable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "kind", "logicalKey", "revision"],
+      "properties": {
+        "sourceId": { "$ref": "#/$defs/opaqueId" },
+        "kind": { "$ref": "#/$defs/sourceKind" },
+        "logicalKey": { "$ref": "#/$defs/opaqueId" },
+        "revision": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+
+    "coverage": {
+      "title": "How much of the expected input was actually read",
+      "description": "`gapDurationMs` is the union of missing time per participant instance, summed across participants — not a sum across every stream, which would multiply the same missing minute by the number of tracks. It is null when expected cadence or exposure cannot be established, which is not the same as zero.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completeness",
+        "expectedSources",
+        "processedSources",
+        "rejectedRecords",
+        "duplicateRecords",
+        "gapDurationMs",
+        "truncated",
+        "warnings"
+      ],
+      "properties": {
+        "completeness": { "$ref": "#/$defs/completeness" },
+        "expectedSources": { "$ref": "#/$defs/nullableCount" },
+        "processedSources": { "$ref": "#/$defs/count" },
+        "rejectedRecords": { "$ref": "#/$defs/count" },
+        "duplicateRecords": { "$ref": "#/$defs/count" },
+        "gapDurationMs": { "$ref": "#/$defs/nullableDurationMs" },
+        "truncated": { "type": "boolean" },
+        "warnings": { "$ref": "#/$defs/reasonCodes" }
+      }
+    },
+
+    "histogram": {
+      "title": "Duration weights over an immutable bucket definition",
+      "description": "`weights[i]` is milliseconds of eligible time whose interval value fell in bucket i. The bucket edges live in the definition, not here, so a stored histogram cannot drift from the bounds it was built with. weights.length must equal upperBounds.length + 1 for the named definition — a cross-document rule the conformance suite checks.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["definitionId", "weights"],
+      "properties": {
+        "definitionId": { "$ref": "#/$defs/opaqueId" },
+        "weights": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/durationMs" }
+        }
+      }
+    },
+
+    "metricStatus": {
+      "enum": ["measured", "partial", "unavailable"]
+    },
+
+    "metricAggregate": {
+      "title": "One metric over one subject",
+      "description": "Identity is the metricId, whose subject, direction, media and units are fixed by the registry. The same metricId under a different subject never implies the same exposure, so aggregation only ever combines identical metricIds at the same scope.\n\nThe `unavailable` branch is enforced below rather than left to prose: an unavailable metric with a numerator is the exact shape that turns 'nobody measured this' into a rendered zero.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metricId",
+        "status",
+        "unavailableReasons",
+        "validIntervals",
+        "eligibleDurationMs",
+        "measuredDurationMs",
+        "numerator",
+        "denominator",
+        "min",
+        "max",
+        "distribution"
+      ],
+      "properties": {
+        "metricId": { "$ref": "#/$defs/metricId" },
+        "status": { "$ref": "#/$defs/metricStatus" },
+        "unavailableReasons": { "$ref": "#/$defs/reasonCodes" },
+        "validIntervals": { "$ref": "#/$defs/count" },
+        "eligibleDurationMs": { "$ref": "#/$defs/nullableDurationMs" },
+        "measuredDurationMs": { "$ref": "#/$defs/durationMs" },
+        "numerator": { "oneOf": [{ "$ref": "#/$defs/finiteNumber" }, { "type": "null" }] },
+        "denominator": { "oneOf": [{ "$ref": "#/$defs/finiteNumber" }, { "type": "null" }] },
+        "min": { "oneOf": [{ "$ref": "#/$defs/finiteNumber" }, { "type": "null" }] },
+        "max": { "oneOf": [{ "$ref": "#/$defs/finiteNumber" }, { "type": "null" }] },
+        "distribution": { "oneOf": [{ "$ref": "#/$defs/histogram" }, { "type": "null" }] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "numerator": { "type": "null" },
+              "denominator": { "type": "null" },
+              "min": { "type": "null" },
+              "max": { "type": "null" },
+              "distribution": { "type": "null" },
+              "validIntervals": { "const": 0 },
+              "measuredDurationMs": { "const": 0 },
+              "unavailableReasons": { "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "measured" } }, "required": ["status"] },
+          "then": { "properties": { "unavailableReasons": { "maxItems": 0 } } }
+        }
+      ]
+    },
+
+    "metricId": {
+      "title": "A metric registry id",
+      "description": "Must exist in the registry version the digest's policy pins. The pattern mirrors the registry's namespacing (`<media|transport>.<direction>.<name>`) without hard-coding the list, so an additive registry version does not invalidate this schema; the conformance suite checks membership.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-zA-Z0-9]*(?:\\.[a-z][a-zA-Z0-9]*)*$"
+    },
+
+    "metricAggregates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/metricAggregate" },
+      "maxItems": 512
+    },
+
+    "impairmentCategory": {
+      "title": "An impairment category",
+      "description": "`any` is not a sum of the others: category durations overlap, so adding them double-counts. See the ImpairmentExposure description for how `any` is assembled.",
+      "enum": ["audio", "video", "network", "connectivity", "any"]
+    },
+
+    "impairmentExposure": {
+      "title": "Assessed, impaired and unknown participant time for one category",
+      "description": "Assessed time is the union of intervals where the policy could evaluate the category. Impaired is the union of positive classifications inside assessed time. Unknown is eligible observed participant time outside assessed time — so impaired + unknown does not have to equal observed time, and assessed is the denominator the UI must divide by.\n\nFor `any`: impaired is the union of known positive categories; assessed is that positive union plus the intervals where every applicable enabled category could be evaluated and none was impaired. A known positive therefore stays affected even when another category is unknown.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "assessedParticipantMs",
+        "impairedParticipantMs",
+        "unknownParticipantMs"
+      ],
+      "properties": {
+        "category": { "$ref": "#/$defs/impairmentCategory" },
+        "assessedParticipantMs": { "$ref": "#/$defs/durationMs" },
+        "impairedParticipantMs": { "$ref": "#/$defs/durationMs" },
+        "unknownParticipantMs": { "$ref": "#/$defs/durationMs" }
+      }
+    },
+
+    "impairmentExposures": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/impairmentExposure" },
+      "maxItems": 5
+    },
+
+    "joinAggregate": {
+      "title": "Application join attempt outcomes",
+      "description": "Unavailable without a versioned application attempt feed; a peer connection is not a join attempt. When available the counts partition attempts exactly: succeeded + failed + canceled + pending + unknown = attempts, which the conformance suite checks because JSON Schema cannot.\n\nThe default success KPI divides succeeded by (succeeded + failed); canceled, pending and unknown are shown beside it rather than folded in, since a cancelled attempt is not a failure of the service.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "attempts",
+        "succeeded",
+        "failed",
+        "canceled",
+        "pending",
+        "unknown"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/capabilityState" },
+        "attempts": { "$ref": "#/$defs/nullableCount" },
+        "succeeded": { "$ref": "#/$defs/nullableCount" },
+        "failed": { "$ref": "#/$defs/nullableCount" },
+        "canceled": { "$ref": "#/$defs/nullableCount" },
+        "pending": { "$ref": "#/$defs/nullableCount" },
+        "unknown": { "$ref": "#/$defs/nullableCount" }
+      },
+      "if": { "properties": { "status": { "const": "unavailable" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "attempts": { "type": "null" },
+          "succeeded": { "type": "null" },
+          "failed": { "type": "null" },
+          "canceled": { "type": "null" },
+          "pending": { "type": "null" },
+          "unknown": { "type": "null" }
+        }
+      }
+    },
+
+    "findingCount": {
+      "title": "Findings of one category over a period",
+      "description": "`raised` is additive by raise time; `activeAtEnd` is evaluated at the period boundary and is **not** additive — summing daily active-at-end counts into a month is the error this field's description exists to prevent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "raised", "activeAtEnd", "truncated"],
+      "properties": {
+        "category": { "$ref": "#/$defs/findingCategory" },
+        "raised": { "$ref": "#/$defs/count" },
+        "activeAtEnd": { "$ref": "#/$defs/count" },
+        "truncated": { "type": "boolean" }
+      }
+    },
+
+    "findingCounts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/findingCount" },
+      "maxItems": 128
+    },
+
+    "findingCategory": {
+      "title": "A finding category",
+      "description": "An open vocabulary on purpose: existing client and observer detectors keep their own category names rather than being relabelled as digest rules, so the set cannot be closed here. The label map supplies display text and an unknown category falls back to its raw code.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+
+    "readState": {
+      "title": "The outcome of an authorized read",
+      "description": "`ready` with an empty digest is a verified empty period. `pending` is a job that has not produced one yet. The two must never render the same way.",
+      "enum": ["ready", "pending", "not-found", "unsupported-version", "failed", "forbidden"]
+    }
+  }
+}

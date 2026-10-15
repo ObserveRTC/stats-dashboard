@@ -70,7 +70,13 @@ ENV NODE_ENV=production \
 #
 #   S3_BUCKET             required — bucket holding <roomId>/<callId>/ folders
 #   S3_PREFIX             optional key prefix, for a bucket shared between
-#                         tenants (e.g. `rooms.polsl.pl/`). Blank reads it all
+#                         tenants (e.g. `acme.example.com/`). Blank reads it all
+#   S3_SAMPLES_PREFIX     root holding the call recordings, default `samples/`.
+#                         Blank for a bucket filled before the roots were split,
+#                         whose calls sit directly under the tenant
+#   S3_DIGEST_PREFIX      root holding the day and month digests the dashboard
+#                         reads, default `digests/` — point it at whatever root
+#                         produces them; see docs/storage-layout.md
 #   S3_ENDPOINT           omit for AWS S3; set for MinIO, R2, self-hosted
 #   S3_PUBLIC_ENDPOINT    set only when the browser reaches storage by a
 #                         different name than the server does; a presigned URL
@@ -83,6 +89,8 @@ ENV NODE_ENV=production \
 #   S3_PRESIGN_TTL        presigned URL lifetime in seconds, default 900
 ENV S3_BUCKET="" \
     S3_PREFIX="" \
+    S3_SAMPLES_PREFIX="samples/" \
+    S3_DIGEST_PREFIX="digests/" \
     S3_ENDPOINT="" \
     S3_PUBLIC_ENDPOINT="" \
     S3_REGION="us-east-1" \

@@ -1,0 +1,29 @@
+{
+  "registryVersion": "capabilities-v1",
+  "description": "The capability keys a call digest must carry, and what each one asserts. Kept as data so the producer, the UI and the conformance suite read one list rather than three.\n\nA capability reflects measured evidence and producer support — not whether a schema field exists. A field present and null because nothing was measured is `unavailable`, not `available`. This is the mechanism that keeps a missing section from rendering as a healthy one.",
+  "requiredCallDigestKeys": [
+    "usage",
+    "joinOutcomes",
+    "audio",
+    "video",
+    "network",
+    "connectivity",
+    "paths",
+    "topology",
+    "cohorts",
+    "scores"
+  ],
+  "keys": {
+    "usage": "Participant sessions, peak concurrency, observed and connected participant time. Partial when membership intervals are known for only some participants.",
+    "joinOutcomes": "Application join attempts and their outcomes. Unavailable without a versioned attempt adapter — a peer connection is not a join attempt.",
+    "audio": "Inbound audio quality evaluation: loss, jitter, concealment, jitter buffer delay.",
+    "video": "Inbound and outbound video quality evaluation: loss, freeze, FPS, encode and decode cost, encoder limitation.",
+    "network": "Transport-level loss and round-trip time on the selected path.",
+    "connectivity": "Connection-state evidence: whether disconnection and failure can be observed at all.",
+    "paths": "Selected ICE path reconstruction — relay, protocol, and the server actually serving each interval. Unavailable where the producer's retained on-change metadata cannot establish it.",
+    "topology": "Publisher-to-subscriber relationships. Unavailable unless verified signalling or resolver evidence supports the links; equal SSRC alone never establishes one.",
+    "cohorts": "Dimension attribution for this call's participants.",
+    "scores": "Observer summary score metadata. Explicitly NOT a measured quality metric in v1: a native producer's default score of 5 is a default, not a healthy measurement, and scores are never fed into fleet means or percentiles."
+  },
+  "scoresNote": "v1 requires no overall score. Existing Observer score min/max/median may be surfaced as clearly labelled source-summary metadata through a future additive section. They may not enter any aggregate on any screen."
+}

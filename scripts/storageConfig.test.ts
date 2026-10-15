@@ -19,8 +19,12 @@ import {
   storageConfigReport,
   storageConfigProblems,
   storagePrefix,
-  toStorageKey,
-  fromStorageKey,
+  samplesPrefix,
+  digestPrefix,
+  toSampleKey,
+  fromSampleKey,
+  toDigestKey,
+  fromDigestKey,
 } from '../src/lib/s3.ts';
 
 let passed = 0;
@@ -32,6 +36,8 @@ function check(name: string, fn: () => void) {
 
 const S3_KEYS = [
   'S3_PREFIX',
+  'S3_SAMPLES_PREFIX',
+  'S3_DIGEST_PREFIX',
   'S3_ENDPOINT',
   'S3_PUBLIC_ENDPOINT',
   'S3_BUCKET',
@@ -193,40 +199,118 @@ check('the config carries no secret values, only whether they exist', () => {
 console.log('\nthe tenant prefix');
 
 check('unset means the bucket root, exactly as before', () => {
-  withEnv({ S3_BUCKET: 'b' }, () => {
+  withEnv({ S3_BUCKET: 'b', S3_SAMPLES_PREFIX: '' }, () => {
     assert.equal(storagePrefix(), '');
-    assert.equal(toStorageKey('room/call/c.jsonl'), 'room/call/c.jsonl');
-    assert.equal(fromStorageKey('room/call/c.jsonl'), 'room/call/c.jsonl');
+    assert.equal(toSampleKey('room/call/c.jsonl'), 'room/call/c.jsonl');
+    assert.equal(fromSampleKey('room/call/c.jsonl'), 'room/call/c.jsonl');
   });
 });
 
 check('every spelling an operator reasonably writes means the same thing', () => {
-  for (const spelling of ['rooms.polsl.pl', '/rooms.polsl.pl', 'rooms.polsl.pl/', ' /rooms.polsl.pl// ']) {
+  for (const spelling of ['acme.example.com', '/acme.example.com', 'acme.example.com/', ' /acme.example.com// ']) {
     withEnv({ S3_BUCKET: 'b', S3_PREFIX: spelling }, () => {
-      assert.equal(storagePrefix(), 'rooms.polsl.pl/', `"${spelling}" normalized wrong`);
+      assert.equal(storagePrefix(), 'acme.example.com/', `"${spelling}" normalized wrong`);
     });
   }
-  // Only slashes is no prefix, not a prefix of "/".
   withEnv({ S3_BUCKET: 'b', S3_PREFIX: '///' }, () => assert.equal(storagePrefix(), ''));
 });
 
-check('listing the root lists the tenant\'s rooms, not one folder named after it', () => {
-  // The bug this exists for: without the prefix the dashboard reads the tenant
-  // folder as the room, so the whole bucket shows one empty "room" per tenant.
-  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'rooms.polsl.pl' }, () => {
-    assert.equal(toStorageKey(''), 'rooms.polsl.pl/');
-    const stored = toStorageKey('daily/call-1/c.jsonl');
-    assert.equal(stored, 'rooms.polsl.pl/daily/call-1/c.jsonl');
-    assert.equal(fromStorageKey(stored), 'daily/call-1/c.jsonl');
-    assert.equal(fromStorageKey(stored).split('/')[0], 'daily');
+check('a key that is not under the prefix is left alone rather than mangled', () => {
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'tenant-a/', S3_SAMPLES_PREFIX: '' }, () => {
+    assert.equal(fromSampleKey('tenant-b/room/call/c.jsonl'), 'tenant-b/room/call/c.jsonl');
   });
 });
 
-check('a key that is not under the prefix is left alone rather than mangled', () => {
-  // Defensive: everything is listed with the prefix, so this should not arise —
-  // but slicing blindly would silently corrupt a key if it ever did.
-  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'tenant-a/' }, () => {
-    assert.equal(fromStorageKey('tenant-b/room/call/c.jsonl'), 'tenant-b/room/call/c.jsonl');
+console.log('\nsamples and digests are the two roots inside one tenant');
+
+check('the defaults put both under the tenant', () => {
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'acme.example.com' }, () => {
+    assert.equal(samplesPrefix(), 'samples/');
+    assert.equal(digestPrefix(), 'digests/');
+    assert.equal(
+      toSampleKey('daily/call-1/c.jsonl'),
+      'acme.example.com/samples/daily/call-1/c.jsonl',
+    );
+    assert.equal(
+      toDigestKey('2026-10/2026-10-03.json'),
+      'acme.example.com/digests/2026-10/2026-10-03.json',
+    );
+  });
+});
+
+check('each space relativizes back to what the app asked for', () => {
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'tenant' }, () => {
+    const sample = toSampleKey('daily/call-1/c.jsonl');
+    assert.equal(fromSampleKey(sample), 'daily/call-1/c.jsonl');
+    const digest = toDigestKey('2026-10.json');
+    assert.equal(fromDigestKey(digest), '2026-10.json');
+  });
+});
+
+check('a root is relativized by its own root and not by the other', () => {
+  // The reason these are two functions and not one with a root argument: a
+  // digest key run through `fromSampleKey` comes back with the digest root
+  // still on it, which then reads as a room called "digests".
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'tenant' }, () => {
+    const digest = toDigestKey('2026-10/2026-10-03.json');
+    assert.equal(fromSampleKey(digest), 'tenant/digests/2026-10/2026-10-03.json');
+  });
+});
+
+check('a bucket filled before the split sets one empty setting, not a migration', () => {
+  // The whole backward-compatibility story: S3_SAMPLES_PREFIX='' says the calls
+  // sit directly under the tenant. Probing for the layout was the alternative,
+  // and an empty bucket is indistinguishable from a bucket in the other
+  // layout — so the probe would guess, and guess wrong exactly when the
+  // deployment is new and nobody can yet tell what went wrong.
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'tenant', S3_SAMPLES_PREFIX: '' }, () => {
+    assert.equal(samplesPrefix(), '');
+    assert.equal(toSampleKey('daily/call-1/c.jsonl'), 'tenant/daily/call-1/c.jsonl');
+    // Digests still have their own root, so a legacy bucket can gain them
+    // without moving a single sample.
+    assert.equal(toDigestKey('2026-10/'), 'tenant/digests/2026-10/');
+  });
+});
+
+check('the two spaces do not collide by default', () => {
+  // A sample key and a digest key must never resolve to the same object, or a
+  // digest would be listed as a room on a bucket where both roots are blank.
+  withEnv({ S3_BUCKET: 'b' }, () => {
+    assert.notEqual(samplesPrefix(), digestPrefix());
+  });
+});
+
+check('both roots pointing at the same place is reported, not silently accepted', () => {
+  // Quiet failure otherwise: a digest would be listed as a sample room and read
+  // as a call summary, which fails by showing nonsense. A warning rather than a
+  // problem — the sample side still works, and `problems` drives the container
+  // healthcheck.
+  withEnv({ S3_BUCKET: 'b', S3_DIGEST_PREFIX: 'samples' }, () => {
+    const { problems, warnings } = storageConfigReport();
+    assert.deepEqual(problems, []);
+    assert.ok(
+      warnings.some((w) => w.includes('S3_SAMPLES_PREFIX') && w.includes('S3_DIGEST_PREFIX')),
+      `expected a collision warning, got: ${warnings.join(' | ')}`,
+    );
+  });
+});
+
+check('both roots blank is the same collision, named as the tenant root', () => {
+  withEnv({ S3_BUCKET: 'b', S3_SAMPLES_PREFIX: '', S3_DIGEST_PREFIX: '' }, () => {
+    const { problems, warnings } = storageConfigReport();
+    assert.deepEqual(problems, []);
+    // The message has to be readable when the colliding value is the empty
+    // string, which is how a legacy bucket with no digests yet is configured.
+    assert.equal(warnings.filter((w) => w.includes('the tenant root')).length, 1);
+  });
+});
+
+check('the resolved roots are on the config, so a log line can name them', () => {
+  withEnv({ S3_BUCKET: 'b', S3_PREFIX: 'tenant', S3_DIGEST_PREFIX: 'd' }, () => {
+    const config = storageConfig();
+    assert.equal(config.prefix, 'tenant/');
+    assert.equal(config.samples, 'samples/');
+    assert.equal(config.digests, 'd/');
   });
 });
 

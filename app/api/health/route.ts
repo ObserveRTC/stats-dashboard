@@ -41,6 +41,14 @@ export async function GET(request: Request) {
   const storage = {
     endpoint: config.endpoint ?? '(aws default)',
     prefix: config.prefix || '(bucket root)',
+    // Both roots, named individually: "pointed at the wrong folder" and "the
+    // bucket is empty" look identical from the room list, and this is the
+    // quickest way to tell them apart. Also where a missing digest is traced
+    // back to reading a different root than whatever writes them writes to.
+    roots: {
+      samples: config.samples || '(tenant root)',
+      digests: config.digests || '(tenant root)',
+    },
     publicEndpoint: config.publicEndpoint ?? '(same as endpoint)',
     bucket: config.bucket || null,
     region: config.region,

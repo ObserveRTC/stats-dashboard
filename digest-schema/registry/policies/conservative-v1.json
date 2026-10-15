@@ -1,0 +1,97 @@
+{
+  "policyId": "conservative-v1",
+  "status": "proposed",
+  "description": "The initial input and impairment policy, for development and fixture interoperability. It is NOT an empirically validated quality model: the thresholds below are starting points, not findings, and must be confirmed or revised against real telemetry before production. Every change takes a new policyId and updated fixtures, because figures computed under different policies may not be combined.\n\nThere are no hidden defaults. Anything this file does not state, the processor may not assume.",
+  "sampling": {
+    "maxSupportedIntervalMs": 10000,
+    "notes": "An interval longer than this contributes no interpolated measurement. The gap is recorded as a gap — a 40-second hole is not four 10-second intervals of whatever was last seen. Repeated identical timestamps add no exposure, so a duplicated sample cannot inflate measured duration."
+  },
+  "freshness": {
+    "remoteReportsRequireAdvancedTimestamp": true,
+    "notes": "A remote (receiver-side) report whose timestamp has not advanced is stale and contributes nothing. It is never carried forward into later intervals as if still true — which is the difference between 'RTT was 400 ms for ten minutes' and 'RTT was measured once, ten minutes ago'."
+  },
+  "clockSkew": {
+    "crossClientCorrection": "none",
+    "maxUncertaintyMs": 1000,
+    "notes": "No cross-client clock correction is invented. Cross-client temporal correlation is rejected when measured clock uncertainty exceeds 1000 ms or cannot be bounded at all, because correlating two participants' timelines through unknown skew manufactures causality that may not exist."
+  },
+  "lifecyclePrecedence": [
+    "application-events",
+    "observer-verified",
+    "sample-bounds"
+  ],
+  "lifecycleNotes": "Explicit application membership and outcome events win for application lifecycle; verified Observer lifecycle follows. Sample bounds establish observation only — first and last sample are when we were watching, not when the person joined and left. Conflicting authoritative sources produce partial coverage and a conflict warning rather than a silent pick.",
+  "eligibility": {
+    "ineligibleTrackStates": ["muted", "disabled", "ended", "paused"],
+    "missingContextIsRecorded": true,
+    "networkMetricsVisibleWhileMuted": true,
+    "notes": "A knowingly muted, disabled, ended or intentionally paused track is ineligible for impairment evaluation: absence of media is not failure of media. Missing context is recorded rather than assumed either way — lack of media alone never proves a fault. Network metrics that were successfully measured stay visible while a media track is muted, because the connection is still being observed."
+  },
+  "impairmentTriggers": {
+    "evaluation": "per-interval-classification",
+    "hysteresisMs": 0,
+    "recoveryDelayMs": 0,
+    "categories": {
+      "audio": {
+        "requires": ["audio.inbound.speechConcealment"],
+        "trigger": "speech concealment ratio > 0.05"
+      },
+      "video": {
+        "requires": ["video.inbound.freezeShare"],
+        "trigger": "browser freeze duration delta > 0",
+        "temporalCaveat": "A nonzero cumulative freeze delta is a video impairment observation for that sampling interval. It does NOT classify the whole interval as impaired participant time: without exact temporal support it contributes measured stream freeze time plus an uncertain observation, and participant impairment duration for that evidence remains unknown. The same restriction applies to reconstructing impairment duration from concealment ratios."
+      },
+      "network": {
+        "requires": ["audio.inbound.loss", "video.inbound.loss", "audio.outbound.rtcpRtt", "video.outbound.rtcpRtt", "transport.iceRtt"],
+        "trigger": "inbound loss > 0.05, or RTCP/ICE RTT > 400 ms",
+        "notes": "Any one of the required inputs being measurable is enough to evaluate the category for that interval; each metric is judged on its own evidence."
+      },
+      "connectivity": {
+        "requires": ["connection-state"],
+        "trigger": "connection state explicitly disconnected or failed"
+      }
+    },
+    "notes": "Interval classifications, not persistent inferred episodes. A valid negative interval ends the classification immediately: there is no hysteresis and no hidden recovery delay, so the digest never claims impairment it did not measure. Each category needs its own valid inputs — a category whose inputs are missing is unknown for that interval, not healthy.\n\nFindings emitted by existing client or observer detectors keep their own lifecycle and policy. They are not relabelled as these digest rules, and their `origin` and `algorithmId` say so."
+  },
+  "exposureAccounting": {
+    "assessed": "union of intervals where the category could be evaluated",
+    "impaired": "union of positive classifications within assessed time",
+    "unknown": "eligible observed participant time outside assessed time",
+    "anyCategory": "impaired is the union of known positive categories; assessed is that positive union plus intervals where every applicable enabled category could be evaluated and none was impaired",
+    "notes": "A known positive stays affected even when another category is unknown — that is the point of assembling `any` as a union rather than an intersection. Category durations overlap and must never be added together. Disabled or non-applicable categories are declared in capabilities.\n\nThis deliberately leaves some participant impairment duration unknown even where stream degradation is measured. That is the honest answer, and the UI must still show the stream metrics and the findings rather than hiding a measured problem because its duration cannot be bounded."
+  },
+  "deduplication": {
+    "multiSfu": {
+      "requires": ["verified-identity", "matching-record-timestamps"],
+      "onOverlappingDisagreement": "retain source evidence, select by committed deterministic source precedence, mark coverage partial and conflicting",
+      "neverAdd": true,
+      "notes": "Multi-SFU observations of the same client are never added. Two SFUs reporting the same participant is one participant seen twice, and summing them doubles every count that participant contributed."
+    },
+    "sourcePrecedence": ["observer-summary", "client-samples", "router-samples"],
+    "precedenceNotes": "Deterministic so that a retry picks the same winner. Stated here rather than left to arrival order, because arrival order is not reproducible."
+  },
+  "cohortAttribution": {
+    "regionMeaning": "declared application or deployment region",
+    "neverInferred": ["region-from-ip"],
+    "multiValued": {
+      "sfuId": "assigned by verified serving path for each interval",
+      "turnServer": "assigned by verified serving path for each interval",
+      "ambiguousIntervals": "unknown cohort"
+    },
+    "notes": "Time-varying dimensions split their exposure across the values actually held, so a participant who moved between two SFUs contributes to both without duplicating their participant time. Ambiguous intervals go to the unknown cohort rather than being guessed or dropped."
+  },
+  "joinAttempts": {
+    "requires": "a versioned application attempt adapter",
+    "adapterFields": ["attemptId", "tenantId", "callId", "clientId", "startedAt", "outcomeAt", "outcome", "reasonCode"],
+    "associationOptional": ["callId", "clientId"],
+    "unassignedAttempts": "counted in the tenant-level attempt index and in period joins, but never in call counts",
+    "neverInvent": "a synthetic successful call for an attempt with no call",
+    "successKpi": "succeeded / (succeeded + failed)",
+    "notes": "A peer connection is not a join attempt. Without this adapter the join capability is unavailable, and the UI shows it as unavailable rather than as zero failures."
+  },
+  "optionalInputs": {
+    "applicationContext": "optional input, never an inferred fact",
+    "sfuFeedback": "optional input, never an inferred fact"
+  },
+  "unavailableCapabilityRule": "If a definition in this policy cannot be supported by the fields actually available, the corresponding capability is marked unavailable with a reason. Unavailable evidence produces unavailable output — never a default, never a zero."
+}

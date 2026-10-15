@@ -9,7 +9,7 @@ import { ensureCallContext, resetCallContextIfChanged } from '../utils/callConte
 import { loadClientMetrics, loadManyClientMetrics } from '../utils/clientMetricsLoader.ts';
 import { LoadingSpinner } from '../components/layout/LoadingSpinner.tsx';
 import { CallDashboard } from '../components/dashboard/CallDashboard.tsx';
-import styles from './StudioPage.module.css';
+import styles from './CallPage.module.css';
 
 export function CallPage() {
   const params = useParams() ?? {};

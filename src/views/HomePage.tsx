@@ -6,6 +6,7 @@ import { useAppStore } from '../stores/index.ts';
 import { RoomIdInput } from '../components/layout/RoomIdInput.tsx';
 import { IdBadge } from '../components/sections/IdBadge.tsx';
 import { StorageStatusNotice } from '../components/layout/StorageStatusNotice.tsx';
+import { DigestPanel } from '../components/digest/DigestPanel.tsx';
 import { LoadingSpinner } from '../components/layout/LoadingSpinner.tsx';
 import { addToRoomIdHistory } from '../utils/roomIdHistory.ts';
 import { fetchRooms } from '../api/client.ts';
@@ -72,7 +73,14 @@ export function HomePage() {
   return (
     <div className={styles.wrapper}>
 
-      {/* Jump input — always visible at top */}
+      {/* Today, first. The question people arrive with is "is anything wrong
+          right now", and answering it used to require knowing which room to
+          open before you could find out. Each period is already added up in
+          the digest root, so this is one GET however busy the day was.
+          Room browsing stays below for when you already know where to look. */}
+      <DigestPanel />
+
+      {/* Jump input — always visible */}
       <div className={styles.jumpBox}>
         <RoomIdInput value={roomId} onChange={setRoomId} onSubmit={handleManualSubmit} />
         <button className={styles.btnPrimary} onClick={handleManualSubmit}>Go</button>

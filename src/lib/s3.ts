@@ -21,9 +21,14 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * except for the presigned URLs this module mints.
  *
  * `S3_PREFIX` scopes everything to one folder, for a bucket shared between
- * tenants (`<tenantFqdn>/<roomId>/<callId>/…`). Listings and reads start inside
- * it and keys are relativized on the way out, so nothing downstream sees it.
- * Empty — the default — reads the whole bucket.
+ * tenants (`<tenantFqdn>/…`). Listings and reads start inside it and keys are
+ * relativized on the way out, so nothing downstream sees it. Empty — the
+ * default — reads the whole bucket.
+ *
+ * Inside the tenant there are two roots this dashboard reads — samples and
+ * digests — each with its own setting, because they have different lifetimes
+ * and different writers. See the block above `samplesPrefix` for what lives
+ * where.
  *
  * `S3_PROXY_STREAMS=true` turns the presigning off: the client `.jsonl` streams
  * are then read by this server and piped to the browser, which never talks to
@@ -49,32 +54,108 @@ function presignTtl(): number {
 }
 
 /**
- * The tenant prefix every key is scoped to. `''` when unset.
+ * Normalize a configured prefix: no leading slash, one trailing slash, or empty.
  *
- * Normalized rather than validated: `rooms.polsl.pl`, `/rooms.polsl.pl` and
- * `rooms.polsl.pl/` all mean the same thing, and rejecting two of the three
+ * Normalized rather than validated: `acme.example.com`, `/acme.example.com` and
+ * `acme.example.com/` all mean the same thing, and rejecting two of the three
  * would cost a deployment for no benefit.
  */
-export function storagePrefix(): string {
-  const cleaned = (process.env.S3_PREFIX ?? '').trim().replace(/^\/+|\/+$/g, '');
+function normalizePrefix(raw: string | undefined): string {
+  const cleaned = (raw ?? '').trim().replace(/^\/+|\/+$/g, '');
   return cleaned === '' ? '' : `${cleaned}/`;
 }
 
-/** `room/call/client.jsonl` -> `tenant/room/call/client.jsonl`. */
-export function toStorageKey(key: string): string {
-  return `${storagePrefix()}${key}`;
+/** The tenant prefix every key is scoped to. `''` when unset. */
+export function storagePrefix(): string {
+  return normalizePrefix(process.env.S3_PREFIX);
 }
 
-/** The reverse, so nothing downstream ever sees the tenant folder. */
-export function fromStorageKey(key: string): string {
-  const prefix = storagePrefix();
-  return prefix && key.startsWith(prefix) ? key.slice(prefix.length) : key;
+/**
+ * The two roots this dashboard reads inside a tenant's folder.
+ *
+ *   <tenant>/<samples>/<roomId>/<callId>/<clientId>.jsonl
+ *   <tenant>/<samples>/<roomId>/<callId>/call-summary[-<sfuId>].json
+ *   <tenant>/<digests>/<YYYY-MM>/<YYYY-MM-DD>.json
+ *   <tenant>/<digests>/<YYYY-MM>.json
+ *
+ * Two roots and not one because they answer different questions and are written
+ * by different things:
+ *
+ *   **samples** — written continuously, during the call, by the observer. The
+ *   truth, and the only place a client's timeline exists. Keyed by room, which
+ *   is the right shape for opening a call you already know about and the wrong
+ *   shape for anything that starts with a date: finding yesterday's calls by
+ *   walking it is a full-bucket scan. Only the call page reads it.
+ *
+ *   **digests** — periods already added up, written by something outside this
+ *   repository. This is what the homepage reads, and reading it is all this
+ *   dashboard does with it: one GET answers "what happened today" however busy
+ *   the day was.
+ *
+ * Separate prefixes rather than subfolders of one, because they have different
+ * lifetimes: samples are deleted by a retention sweep while digests are kept
+ * for ever and belong in a cheaper storage class. One prefix would make both of
+ * those a path-matching exercise, and a lifecycle rule meant for samples would
+ * reach into the digests.
+ *
+ * Whatever the bucket holds besides these two — a work queue, staging, an
+ * archive — this dashboard neither reads nor needs to know about, which is why
+ * it has settings for exactly these two and nothing else.
+ *
+ * Both are configurable, and `samples` defaults to `samples/` only because that
+ * is where new deployments write. A bucket filled before the split has its
+ * calls directly under the tenant, and sets `S3_SAMPLES_PREFIX=` to say so —
+ * one empty setting instead of a migration. Probing for the layout was the
+ * alternative and it is worse: an empty bucket is indistinguishable from a
+ * bucket in the other layout, so the probe would guess, and guess wrong exactly
+ * when a deployment is new and nobody can tell what went wrong yet.
+ */
+export function samplesPrefix(): string {
+  return normalizePrefix(process.env.S3_SAMPLES_PREFIX ?? 'samples');
+}
+
+export function digestPrefix(): string {
+  return normalizePrefix(process.env.S3_DIGEST_PREFIX ?? 'digests');
+}
+
+/** Where the sample space begins: `<tenant>/<samples>/`. */
+function sampleRoot(): string {
+  return `${storagePrefix()}${samplesPrefix()}`;
+}
+
+/** Where the digest space begins: `<tenant>/<digests>/`. */
+function digestRoot(): string {
+  return `${storagePrefix()}${digestPrefix()}`;
+}
+
+/** `room/call/client.jsonl` -> `tenant/samples/room/call/client.jsonl`. */
+export function toSampleKey(key: string): string {
+  return `${sampleRoot()}${key}`;
+}
+
+/** The reverse, so nothing downstream sees either the tenant or the root. */
+export function fromSampleKey(key: string): string {
+  const root = sampleRoot();
+  return root && key.startsWith(root) ? key.slice(root.length) : key;
+}
+
+/** `2026-10/2026-10-03.json` -> `tenant/digests/2026-10/2026-10-03.json`. */
+export function toDigestKey(key: string): string {
+  return `${digestRoot()}${key}`;
+}
+
+export function fromDigestKey(key: string): string {
+  const root = digestRoot();
+  return root && key.startsWith(root) ? key.slice(root.length) : key;
 }
 
 export interface StorageConfig {
   endpoint?: string;
   /** Key prefix every listing and read is scoped to. `''` means the bucket root. */
   prefix: string;
+  /** The two roots inside it, relative to `prefix`. */
+  samples: string;
+  digests: string;
   /** Endpoint to sign browser-facing URLs against, when it differs. */
   publicEndpoint?: string;
   /** Stream client `.jsonl` through this server instead of presigning it. */
@@ -99,6 +180,8 @@ export function storageConfig(): StorageConfig {
   return {
     endpoint: process.env.S3_ENDPOINT || undefined,
     prefix: storagePrefix(),
+    samples: samplesPrefix(),
+    digests: digestPrefix(),
     publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || undefined,
     // Opt-in, and deliberately not inferred from a missing S3_PUBLIC_ENDPOINT:
     // the common case for an unset public endpoint is that the server and the
@@ -151,6 +234,18 @@ export function storageConfigReport(config = storageConfig()): StorageConfigRepo
   if (config.publicEndpoint && !/^https?:\/\//.test(config.publicEndpoint)) {
     problems.push(
       `S3_PUBLIC_ENDPOINT must start with http:// or https:// (got "${config.publicEndpoint}")`,
+    );
+  }
+
+  // Two roots resolving to the same place is always a mistake, and a quiet
+  // one: a digest would be listed as a sample room and read as a call summary,
+  // which fails by showing nonsense rather than by erroring. Not fatal — the
+  // sample side still works — so it is a warning, and `problems` is what the
+  // container healthcheck fails on.
+  if (config.samples === config.digests) {
+    warnings.push(
+      `S3_SAMPLES_PREFIX and S3_DIGEST_PREFIX both resolve to ` +
+        `"${config.samples || '(the tenant root)'}" — the two spaces would be read as each other.`,
     );
   }
 
@@ -254,26 +349,108 @@ export interface ObjectEntry {
  * gets the rooms of its own tenant rather than a single folder named after it.
  */
 export async function listObjectsDeep(prefix: string): Promise<ObjectEntry[]> {
+  return listDeep(toSampleKey(prefix), fromSampleKey);
+}
+
+/**
+ * The same, over the digest root: takes and returns keys relative to it.
+ *
+ * Its own function rather than a flag on `listObjectsDeep`, because the two
+ * roots relativize differently and a boolean at the call site would not say
+ * which space the caller meant — and reading a digest key as a sample key
+ * silently returns nothing rather than failing.
+ */
+export async function listDigestObjectsDeep(prefix: string): Promise<ObjectEntry[]> {
+  return listDeep(toDigestKey(prefix), fromDigestKey);
+}
+
+async function listDeep(
+  absolutePrefix: string,
+  relativize: (key: string) => string,
+): Promise<ObjectEntry[]> {
   const results: ObjectEntry[] = [];
   let token: string | undefined;
   do {
     const cmd = new ListObjectsV2Command({
       Bucket: bucketName(),
-      Prefix: toStorageKey(prefix),
+      Prefix: absolutePrefix,
       ContinuationToken: token,
     });
     const res = await s3Client().send(cmd);
     for (const obj of res.Contents ?? []) {
       if (!obj.Key) continue;
-      const key = fromStorageKey(obj.Key);
-      // The prefix itself can exist as a zero-byte folder marker, which
-      // relativizes to nothing and is not an object anybody asked for.
+      const key = relativize(obj.Key);
+      // A root can exist as a zero-byte folder marker, which relativizes to
+      // nothing and is not an object anybody asked for.
       if (key === '') continue;
       results.push({ key, lastModified: obj.LastModified });
     }
     token = res.IsTruncated ? res.NextContinuationToken : undefined;
   } while (token);
   return results;
+}
+
+/**
+ * Read one small object as text, or `undefined` when it is not there.
+ *
+ * "Not there" is a first-class answer rather than an exception because every
+ * caller of this has a sensible thing to do without the object: today's digest
+ * does not exist until something has written it, and a call still running has
+ * no summary. Making absence an exception would mean
+ * every call site wrapping it in a try block whose catch cannot tell a missing
+ * object from a broken bucket — which is the one distinction worth keeping.
+ *
+ * Anything else — no credentials, no such bucket, a refused connection —
+ * throws, because those are not states a page should quietly render around.
+ *
+ * For the `.jsonl` streams use `getObjectStream`: this buffers, and a long
+ * call's stream is tens of megabytes.
+ */
+async function getObjectText(absoluteKey: string): Promise<string | undefined> {
+  try {
+    const res = await s3Client().send(
+      new GetObjectCommand({ Bucket: bucketName(), Key: absoluteKey }),
+    );
+    return (await res.Body?.transformToString()) ?? undefined;
+  } catch (err) {
+    if (isNotFound(err)) return undefined;
+    throw err;
+  }
+}
+
+/**
+ * Is this the SDK saying the object is not there?
+ *
+ * Checked three ways because the S3-compatible gateways disagree: AWS sends
+ * `NoSuchKey`, some gateways send `NotFound` (that is what a HEAD-shaped 404
+ * surfaces as), and a few only set the HTTP status. Missing any one of them
+ * turns an empty day into a 500.
+ */
+function isNotFound(err: unknown): boolean {
+  const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+  return e?.name === 'NoSuchKey' || e?.name === 'NotFound' || e?.$metadata?.httpStatusCode === 404;
+}
+
+/** One JSON object from a root, parsed, or `undefined` when absent/unparseable. */
+async function getJson(absoluteKey: string, label: string): Promise<unknown | undefined> {
+  const text = await getObjectText(absoluteKey);
+  if (text === undefined || text.trim() === '') return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch (err) {
+    // A half-written object is a real event — a job killed mid-PUT — and it
+    // must not take down the page that reads it. Logged and treated as absent.
+    console.warn('[storage] %s is not valid JSON: %s', label, (err as Error).message);
+    return undefined;
+  }
+}
+
+export function getSampleJson(key: string): Promise<unknown | undefined> {
+  return getJson(toSampleKey(key), `samples/${key}`);
+}
+
+export function getDigestJson(key: string): Promise<unknown | undefined> {
+  return getJson(toDigestKey(key), `digests/${key}`);
 }
 
 /**
@@ -285,13 +462,13 @@ export async function listObjectsDeep(prefix: string): Promise<ObjectEntry[]> {
 export async function listObjects(prefix: string): Promise<ObjectEntry[]> {
   const cmd = new ListObjectsV2Command({
     Bucket: bucketName(),
-    Prefix: toStorageKey(prefix),
+    Prefix: toSampleKey(prefix),
     Delimiter: '/',
   });
   const res = await s3Client().send(cmd);
   return (res.Contents ?? [])
     .filter((o) => o.Key)
-    .map((o) => ({ key: fromStorageKey(o.Key!), lastModified: o.LastModified }))
+    .map((o) => ({ key: fromSampleKey(o.Key!), lastModified: o.LastModified }))
     .filter((o) => o.key !== '');
 }
 
@@ -353,7 +530,7 @@ export interface ObjectStream {
  * Throws whatever the SDK throws; a missing object is a `NoSuchKey`.
  */
 export async function getObjectStream(key: string): Promise<ObjectStream> {
-  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: toStorageKey(key) });
+  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: toSampleKey(key) });
   const res = await s3Client().send(cmd);
 
   if (!res.Body) throw new Error(`object has no body [key: ${key}]`);
@@ -375,7 +552,7 @@ export async function getObjectStream(key: string): Promise<ObjectStream> {
  * `key` is relative to `S3_PREFIX`.
  */
 export async function presignGet(key: string): Promise<string> {
-  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: toStorageKey(key) });
+  const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: toSampleKey(key) });
   return getSignedUrl(presignClient(), cmd, { expiresIn: storageConfig().presignTtl });
 }
 
@@ -400,10 +577,12 @@ export function announceStorageConfig(): void {
   const problems = storageConfigProblems(config);
 
   console.info(
-    '[storage] endpoint=%s bucket=%s prefix=%s region=%s pathStyle=%s credentials=%s streams=%s%s%s',
+    '[storage] endpoint=%s bucket=%s prefix=%s roots=%s|%s region=%s pathStyle=%s credentials=%s streams=%s%s%s',
     config.endpoint ?? '(aws default)',
     config.bucket || '(unset)',
     config.prefix || '(root)',
+    config.samples || '(root)',
+    config.digests || '(root)',
     config.region,
     config.forcePathStyle,
     config.hasCredentials ? 'env' : 'sdk-chain',

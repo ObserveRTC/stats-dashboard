@@ -1,5 +1,8 @@
-# Every push and pull request: the same three gates the Docker build runs, so a
-# red CI and a failed image build mean the same thing.
+# Every push and pull request.
+#
+# `check` runs the same gates the Docker build runs, so a red CI and a failed
+# image build mean the same thing. `processor` is a separate application with
+# its own dependency tree, so it installs and tests on its own.
 name: CI
 
 on:
@@ -33,5 +36,44 @@ jobs:
       - name: Test
         run: npm test
 
+      # The contract is the handoff gate between the dashboard and anything that
+      # writes digests, so a schema change nobody regenerated has to fail here
+      # rather than at the point someone notices the types are stale.
+      - name: Generated schema artifacts are current
+        run: npm run schema:check
+
       - name: Build
         run: npm run build
+
+      # Releasing is a manual action (`release.yml`), and it refuses a version
+      # with no changelog section. Checking it here means that refusal never
+      # arrives as a surprise at the moment someone is trying to cut a release —
+      # the pull request that caused it is where it is cheap to fix.
+      #
+      # There is no longer a second version to agree with: the processor shares
+      # this package.json. What used to be checked here is now impossible to get
+      # wrong.
+      - name: Releasable
+        run: |
+          ROOT="$(node -p "require('./package.json').version")"
+          if ! awk -v want="## $ROOT" '
+            $0 ~ "^## " { inside = ($0 == want || index($0, want " ") == 1); next }
+            inside { print }
+          ' CHANGELOG.md | grep -q '[^[:space:]]'; then
+            echo "::error::CHANGELOG.md has no '## $ROOT' section. Add one, or leave the version alone."
+            exit 1
+          fi
+          echo "$ROOT is releasable: CHANGELOG.md has its section"
+
+      # The processor used to be a job of its own here: its own checkout cache,
+      # its own `npm ci`, its own suite, and a `pretest` that verified its
+      # vendored copy of the contract had not drifted from digest-schema/.
+      #
+      # All of that is gone because the copy is gone. The processor shares this
+      # package.json and this lockfile, imports digest-schema/ directly, and its
+      # suite runs in `npm test` above as test:digest-patch and
+      # test:digest-server. One install, one version, nothing to keep in step.
+      #
+      # What replaced the drift check is scripts/noWritePath.test.ts, which runs
+      # first in that chain: sharing a repository with the writer is only safe
+      # while nothing reachable from app/ imports it.

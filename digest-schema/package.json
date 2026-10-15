@@ -1,0 +1,41 @@
+{
+  "name": "@observertc/digest-schema",
+  "version": "1.0.0",
+  "description": "The analytics digest contract, version 1: JSON Schema, metric registry, immutable histogram definitions, calculation policies and reason codes. Shared by the stats dashboard and any processor that writes digests.",
+  "license": "Apache-2.0",
+  "author": "ObserveRTC",
+  "type": "module",
+  "private": true,
+  "files": [
+    "schema",
+    "registry",
+    "contract",
+    "CHECKSUMS.txt",
+    "README.md"
+  ],
+  "exports": {
+    "./schema/*": "./schema/*",
+    "./registry/*": "./registry/*",
+    "./metrics": "./registry/metrics.v1.json",
+    "./histograms": "./registry/histograms.v1.json",
+    "./capabilities": "./registry/capabilities.v1.json",
+    "./policies/conservative-v1": "./registry/policies/conservative-v1.json",
+    "./reason-codes": "./registry/reason-codes.v1.json"
+  },
+  "comment": [
+    "`private: true` until this is published. It is a package rather than a loose",
+    "folder because it is the one thing the dashboard and the processor share, and",
+    "naming it as a dependency is how that stays true — a relative path into a",
+    "sibling directory is a coupling nobody declares and everybody forgets.",
+    "",
+    "Until it is published, each consumer gets the artifacts its own way:",
+    "the dashboard generates TypeScript and validators from it in-tree",
+    "(`npm run schema:generate` at the repo root), and src/digest-server/ keeps a",
+    "checksummed copy under vendor/ because a Docker build context cannot reach",
+    "outside the directory it is given. Both are verified against this folder, so",
+    "neither is a fork.",
+    "",
+    "Publishing this removes both mechanisms: `npm i @observertc/digest-schema`,",
+    "and the vendor folder and the sync script are deleted."
+  ]
+}

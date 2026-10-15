@@ -1,0 +1,298 @@
+# Cut a release. Run it by hand, when you have decided to release.
+#
+#   Actions → Release → Run workflow
+#
+# or:
+#
+#   gh workflow run release.yml                        # release what package.json says
+#   gh workflow run release.yml -f dry_run=true        # check everything, change nothing
+#   gh workflow run release.yml -f version=1.0.0       # confirm the version you expect
+#   gh workflow run release.yml -f prerelease=true     # mark it a pre-release
+#
+# ## What it does
+#
+# Verifies the repository is releasable, runs every gate, then creates the
+# annotated tag `v<version>` and a GitHub Release whose body is this version's
+# `CHANGELOG.md` section. The tag push is what triggers `docker-release.yml` to
+# publish `observertc/stats-dashboard:<version>`.
+#
+# Nothing here decides what the version should be — a pull request does that, in
+# `package.json`, which is the only place the decision is reviewable. `ci.yml`
+# checks on every PR that the version and the changelog agree, so by the time
+# you run this the answer is already known.
+#
+# ## Deliberately manual
+#
+# Releasing on every merge to main means the version bump is the release, and a
+# bump merged for an unrelated reason ships one. This way the release is its own
+# act with its own log, and `dry_run` lets you read the notes before anyone else
+# does.
+#
+# Because it is manual, **an existing tag is an error, not a no-op**. You asked
+# for a release; if that version is already out, something is wrong and the
+# right thing is to say so rather than to exit quietly.
+#
+# ## The gates run here, not just in CI
+#
+# A manual trigger can be pointed at any commit, including one CI never saw.
+# Re-running typecheck, tests, the schema check and the build costs a few
+# minutes on a deliberate action and makes "this tag builds" a property of the
+# tag rather than a hope.
+#
+# ## The GITHUB_TOKEN limitation, which is the one real trap here
+#
+# GitHub does not run workflows in response to events created by the default
+# `GITHUB_TOKEN` — it is how it stops a workflow triggering itself forever. So a
+# tag pushed with `GITHUB_TOKEN` does **not** trigger `docker-release.yml`, and
+# the versioned image never gets published.
+#
+# With `RELEASE_TOKEN` set — a fine-grained PAT with `contents: write` on this
+# repository — the tag is pushed as that identity and the image build runs as it
+# would for a hand-pushed tag. Without it, this still tags and still writes the
+# release; the job summary then names the one manual step,
+# `gh workflow run docker-release.yml -f tag=<version>`, which that workflow
+# already accepts as an input.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release. Blank uses package.json; a value must match it.'
+        required: false
+        type: string
+      dry_run:
+        description: 'Verify everything and print the notes. Creates no tag and no release.'
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark the GitHub release as a pre-release (for an -rc or -beta).'
+        required: false
+        type: boolean
+        default: false
+      allow_unmerged:
+        description: 'Permit releasing from a ref that is not the default branch.'
+        required: false
+        type: boolean
+        default: false
+
+# One at a time. Not cancel-in-progress: a half-cut release — tag pushed, release
+# not written — is worse than a queued one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags are needed to answer "does this one exist already", and
+          # actions/checkout fetches none by default.
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # ── is this a sane thing to release? ───────────────────────────────────
+
+      # A tag on an unmerged branch points at code that is not on main, and it
+      # would still build and publish an image. Almost always a mistake, so it
+      # takes an explicit input rather than a second thought.
+      - name: Releasing from the default branch
+        if: ${{ !inputs.allow_unmerged }}
+        run: |
+          DEFAULT="${{ github.event.repository.default_branch }}"
+          if [ "${{ github.ref_name }}" != "$DEFAULT" ]; then
+            echo "::error::Running from '${{ github.ref_name }}', not '$DEFAULT'. Merge first, or re-run with allow_unmerged=true."
+            exit 1
+          fi
+          echo "on $DEFAULT"
+
+      - name: Read and confirm the version
+        id: version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          WANTED="${{ inputs.version }}"
+
+          # When given, the input is a confirmation rather than an override: it
+          # must agree with the file. Letting it win would tag a version the
+          # code does not claim to be, and the image would carry that number.
+          if [ -n "$WANTED" ] && [ "$WANTED" != "$VERSION" ]; then
+            echo "::error::You asked for $WANTED but package.json says $VERSION. Bump package.json in a pull request first."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "releasing $VERSION"
+
+      # Both images come out of this one package.json, so there is one version
+      # and nothing to keep in agreement. There used to be a check here that the
+      # processor's own package.json had been bumped with the dashboard's; the
+      # processor no longer has one.
+      #
+      # digest-schema still does, and is deliberately NOT checked against it.
+      # Its version is the analytics contract's own, and `schemaVersion: 1` may
+      # only change when a field's meaning changes — moving it with every
+      # release would announce a breaking contract change on every release that
+      # was not one.
+      - name: What this release covers
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          SCHEMA="$(node -p "require('./digest-schema/package.json').version")"
+          echo "dashboard + digest processor   $VERSION  (one package, two images)"
+          echo "digest contract                $SCHEMA  (independent — the contract's own version)"
+
+      # Before the gates, so a missing changelog entry fails in seconds rather
+      # than after a full build.
+      - name: Extract the release notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::error::CHANGELOG.md is missing."
+            exit 1
+          fi
+
+          # Everything between this version's heading and the next `## ` one.
+          awk -v want="## $VERSION" '
+            $0 ~ "^## " { inside = ($0 == want || index($0, want " ") == 1); next }
+            inside { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > /tmp/notes.md
+
+          if [ ! -s /tmp/notes.md ]; then
+            echo "::error::CHANGELOG.md has no '## $VERSION' section. Add one describing this release."
+            exit 1
+          fi
+          echo "$(wc -l < /tmp/notes.md) lines of notes"
+
+      - name: Already released?
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::v$VERSION is already tagged. Bump the version in a pull request, or delete the tag if it was a mistake."
+            exit 1
+          fi
+          echo "v$VERSION is new"
+
+      # ── the gates ─────────────────────────────────────────────────────────
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The contract is the handoff gate between the dashboard and anything that
+      # writes digests. A schema change nobody regenerated must not ship.
+      - name: Generated schema artifacts are current
+        run: npm run schema:check
+
+      - name: Build
+        run: npm run build
+
+      # No separate processor step: its suite runs inside `npm test` above, as
+      # test:digest-patch and test:digest-server, off the one install. The
+      # chain also starts with scripts/noWritePath.test.ts, which is what makes
+      # sharing a repository with the writer safe — so a release cannot be cut
+      # while the public app has grown a write path.
+
+      # ── publish ───────────────────────────────────────────────────────────
+
+      - name: Compose the release body
+        id: body
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SCHEMA="$(node -p "require('./digest-schema/package.json').version")"
+
+          # The authored notes, plus a generated footer. The footer is generated
+          # precisely so it cannot drift: every value in it is read from a file
+          # in this commit rather than copied by hand into a changelog.
+          {
+            cat /tmp/notes.md
+            echo
+            echo "---"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Dashboard | \`$VERSION\` |"
+            echo "| Digest processor | \`$VERSION\` |"
+            echo "| Digest contract | \`$SCHEMA\` (\`schemaVersion: 1\`) |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo
+            echo "**Container image**"
+            echo
+            echo '```'
+            echo "docker pull observertc/stats-dashboard:$VERSION"
+            echo '```'
+          } > /tmp/body.md
+
+          {
+            echo "## v$VERSION"
+            echo
+            cat /tmp/body.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dry run — stopping here
+        if: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo
+            echo "> **Dry run.** Every check passed and every gate ran. No tag and no"
+            echo "> release were created. Re-run with \`dry_run\` unset to publish this."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "dry run: verified v${{ steps.version.outputs.version }}, created nothing"
+
+      - name: Tag it
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Annotated, so `git describe` and the GitHub UI both carry the notes.
+          git tag -a "v${{ steps.version.outputs.version }}" -F /tmp/notes.md
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Create the release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "${{ steps.version.outputs.version }}" \
+            --notes-file /tmp/body.md \
+            --verify-tag \
+            ${{ inputs.prerelease && '--prerelease' || '' }}
+
+      # Said in the summary rather than only in a log line, because this is the
+      # one step a maintainer has to take by hand when RELEASE_TOKEN is not set.
+      - name: What still needs doing
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          {
+            echo
+            if [ -n "${{ secrets.RELEASE_TOKEN }}" ]; then
+              echo "> Tagged with \`RELEASE_TOKEN\`, so \`docker-release.yml\` is building"
+              echo "> \`observertc/stats-dashboard:$VERSION\` now."
+            else
+              echo "> **One manual step.** The tag was pushed with the default \`GITHUB_TOKEN\`,"
+              echo "> and GitHub does not run workflows for events it creates — so the image"
+              echo "> build did **not** start. Publish the versioned tags with:"
+              echo ">"
+              echo "> \`\`\`"
+              echo "> gh workflow run docker-release.yml -f tag=$VERSION"
+              echo "> \`\`\`"
+              echo ">"
+              echo "> Setting a \`RELEASE_TOKEN\` secret (a fine-grained PAT with"
+              echo "> \`contents: write\`) removes this step for good."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

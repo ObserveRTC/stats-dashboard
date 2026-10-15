@@ -1,0 +1,28 @@
+{
+  "callId": "call-0001",
+  "attachments": {
+    "roomId": "demo-room",
+    "clients": {
+      "client-a": {},
+      "client-b": {}
+    }
+  },
+  "clients": {
+    "clientIds": [
+      "client-a",
+      "client-b"
+    ],
+    "peak": 2,
+    "joined": 2,
+    "left": 2
+  },
+  "scores": {
+    "samples": 22,
+    "median": 4.1,
+    "min": 2.2,
+    "max": 4.8
+  },
+  "startedAt": 1792058400000,
+  "endedAt": 1792058455000,
+  "durationInMs": 55000
+}

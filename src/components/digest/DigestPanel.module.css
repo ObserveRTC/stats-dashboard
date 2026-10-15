@@ -1,0 +1,113 @@
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.day { font-size: 0.72rem; color: var(--text-muted); }
+
+/* Where the figures came from, and how far behind the processor is. */
+.badge {
+  border: 1px solid var(--color-divider);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 7px;
+  text-transform: uppercase;
+  vertical-align: 2px;
+  cursor: help;
+}
+
+/* The backlog, when there is one. Amber rather than red: a queue with items in
+   it is normal for a few seconds after a call ends, and only alarming if the
+   number does not fall. */
+.badgeWarn {
+  composes: badge;
+  border-color: color-mix(in srgb, var(--quality-fair) 55%, transparent);
+  color: var(--quality-fair);
+}
+
+.nav { display: flex; align-items: center; gap: 4px; }
+
+.navBtn {
+  background: none;
+  border: 1px solid var(--color-divider);
+  border-radius: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 1px 7px;
+}
+
+.navBtn:hover:not(:disabled) { color: var(--text); border-color: var(--text-muted); }
+.navBtn:disabled { opacity: 0.35; cursor: default; }
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-3);
+}
+
+.stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.statValue { font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.statUnit { font-size: 0.7rem; color: var(--text-muted); margin-left: 4px; }
+
+/* Column-flow rather than a fixed 24, because the same strip shows a day's
+   hours and a month's 28–31 days. */
+.hours {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  align-items: end;
+  height: 34px;
+}
+
+.hourBar {
+  background: var(--color-accent-400, var(--text-muted));
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  opacity: 0.8;
+}
+
+.hourBarEmpty { background: var(--color-divider); min-height: 2px; border-radius: 2px; }
+
+.hourAxis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.scroll { overflow-x: auto; }
+.clickable { cursor: pointer; }
+.clickable:hover { background: color-mix(in srgb, var(--text-muted) 8%, transparent); }
+.mono { font-family: ui-monospace, monospace; font-size: 0.68rem; }
+.note { font-size: 0.72rem; color: var(--text-muted); margin: 0; }
+
+.sub {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0.8rem 0 0.35rem;
+}

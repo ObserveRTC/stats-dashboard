@@ -41,3 +41,24 @@ npm-debug.log*
 coverage
 tmp/
 temp/
+
+# src/digest-server/ and digest-schema/ are deliberately NOT ignored, and this
+# is the one entry worth reading twice.
+#
+# One .dockerignore serves both Dockerfiles. Dockerfile.digest is built from
+# this same root context and needs the contract, which is the whole reason the
+# processor's old vendored copy could be deleted. And this image needs them too
+# now: the build stage runs `npm test`, which includes the processor's own suite
+# and scripts/noWritePath.test.ts. Ignoring them would turn both into a silent
+# skip, so the dashboard image would stop proving that it has no write path at
+# exactly the moment that proof started mattering.
+#
+# They reach no layer of this image. The build stage copies the tree, but the
+# runtime stage copies only .next/standalone, .next/static and public, so the
+# processor is present where it is tested and absent where it would run.
+#
+# BuildKit does support a per-Dockerfile ignore file
+# (Dockerfile.digest.dockerignore) which would let this one stay tight. Not
+# used on purpose: without BuildKit it is silently ignored, and the first
+# symptom is the processor build failing on a missing contract — a confusing
+# way to discover which builder you are on.

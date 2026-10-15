@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.observertc.org/digest/v1/call-digest.json",
+  "title": "Call digest, version 1",
+  "description": "One call's identity, coverage, usage, metric aggregates, finding counts and references to paginated detail.\n\nThis is a saved fact, not a view: everything in it was computed by the processor from archived sources, and a reader does no counter arithmetic to render it. The detail refs are the only way into per-participant, per-stream, per-path, timeline and finding data, and each is read against this digest's `revision` — a reader that pins one revision and pages another has spliced two generations together.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "digestId",
+    "tenantId",
+    "callId",
+    "roomId",
+    "revision",
+    "provenance",
+    "lifecycle",
+    "range",
+    "coverage",
+    "capabilities",
+    "sources",
+    "usage",
+    "joins",
+    "impairments",
+    "metrics",
+    "findingCounts",
+    "participants",
+    "streamDetails",
+    "pathDetails",
+    "timeline",
+    "findings"
+  ],
+  "properties": {
+    "kind": { "const": "call-digest" },
+
+    "schemaVersion": {
+      "description": "Major version. A reader that does not support this exact value must refuse the document rather than read it field by field — a field whose meaning changed would otherwise render as if it had not.",
+      "const": 1
+    },
+
+    "digestId": { "$ref": "common.json#/$defs/opaqueId" },
+    "tenantId": { "$ref": "common.json#/$defs/opaqueId" },
+    "callId": { "$ref": "common.json#/$defs/opaqueId" },
+
+    "roomId": {
+      "description": "Null when the sources never carried one. A room id may be a UUID with no relationship to the call id, so nothing may be inferred from its text.",
+      "oneOf": [{ "$ref": "common.json#/$defs/opaqueId" }, { "type": "null" }]
+    },
+
+    "revision": {
+      "description": "This immutable output generation. Detail pages are valid only against it.",
+      "$ref": "common.json#/$defs/opaqueId"
+    },
+
+    "provenance": { "$ref": "common.json#/$defs/provenance" },
+
+    "lifecycle": {
+      "description": "An open call is provisional even when every currently known file was processed: more samples may still arrive. `unknown` means no lifecycle evidence of sufficient authority was found.",
+      "enum": ["open", "closed", "unknown"]
+    },
+
+    "range": {
+      "description": "The known call span — not the archive write time, and not a summary's finalization time. Null when lifecycle evidence cannot establish it. First and last observed samples may bound observed exposure but do not establish authoritative join or leave times.",
+      "oneOf": [{ "$ref": "common.json#/$defs/timeRange" }, { "type": "null" }]
+    },
+
+    "coverage": { "$ref": "common.json#/$defs/coverage" },
+
+    "capabilities": {
+      "description": "Must contain every key the contract requires (see registry/capabilities.v1.json, which both implementations and the conformance suite read). Additional keys are allowed.",
+      "$ref": "common.json#/$defs/capabilityMap"
+    },
+
+    "sources": {
+      "description": "The immutable input inventory this generation was built from. Its hash plus policy identity is `provenance.sourceRevision`, which is what makes a retry deterministic and a late arrival detectable.",
+      "type": "array",
+      "items": { "$ref": "common.json#/$defs/source" },
+      "maxItems": 4096
+    },
+
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "participantSessions",
+        "peakConcurrentParticipants",
+        "observedParticipantMs",
+        "connectedParticipantMs",
+        "callDurationMs"
+      ],
+      "properties": {
+        "participantSessions": {
+          "description": "Deduplicated client lifecycle instances. Never unique people, and never a sum of per-SFU counts — the same client seen by two SFUs is one session.",
+          "$ref": "common.json#/$defs/nullableCount"
+        },
+        "peakConcurrentParticipants": {
+          "description": "Requires membership intervals. A summary's single-call peak may be used when authoritative for the whole call; peaks from several SFUs may not be summed, because two SFUs peaking at different moments never co-occurred.",
+          "$ref": "common.json#/$defs/nullableCount"
+        },
+        "observedParticipantMs": {
+          "description": "The union of valid observation intervals per client instance, summed across instances. Not participant count multiplied by call duration.",
+          "$ref": "common.json#/$defs/durationMs"
+        },
+        "connectedParticipantMs": {
+          "description": "Requires explicit connection-state evidence. Null when there is none — not a fallback to observed time.",
+          "$ref": "common.json#/$defs/nullableDurationMs"
+        },
+        "callDurationMs": { "$ref": "common.json#/$defs/nullableDurationMs" }
+      }
+    },
+
+    "joins": { "$ref": "common.json#/$defs/joinAggregate" },
+
+    "impairments": { "$ref": "common.json#/$defs/impairmentExposures" },
+
+    "metrics": { "$ref": "common.json#/$defs/metricAggregates" },
+
+    "findingCounts": { "$ref": "common.json#/$defs/findingCounts" },
+
+    "participants": { "$ref": "common.json#/$defs/nullableResourceRef" },
+    "streamDetails": { "$ref": "common.json#/$defs/nullableResourceRef" },
+    "pathDetails": { "$ref": "common.json#/$defs/nullableResourceRef" },
+    "timeline": { "$ref": "common.json#/$defs/nullableResourceRef" },
+    "findings": { "$ref": "common.json#/$defs/nullableResourceRef" }
+  }
+}

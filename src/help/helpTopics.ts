@@ -457,10 +457,64 @@ const CLIENT: HelpTopic[] = [
   },
 ];
 
+/* ── the digest ────────────────────────────────────────── */
+
+const DIGEST: HelpTopic[] = [
+  {
+    id: 'digest/panel',
+    title: 'Today',
+    what: 'Everything that happened across every room in one day — or, switched to the month view, across one month. Call counts, participants, quality, issues and TURN use, added up from the calls themselves.',
+    why: 'It answers the question people arrive with, “is anything wrong right now”, which used to require knowing which room to open before you could find out. Nothing here needs a room id, and nothing is counted while you wait — the figures were added up before you asked.',
+    howToRead:
+      'Read the stat row first, then the “look here first” list — that is where the calls worth opening are. The all-calls table below it is the same day in full, newest first; clicking a row opens the call.',
+    watchOut:
+      'Days are UTC and a call belongs to the day it *started*. A call running 23:50 → 00:30 is counted entirely in the earlier day, so a late-evening call will not appear on the day most of it happened in local time.',
+  },
+  {
+    id: 'digest/source',
+    title: 'When this was digested',
+    what: 'The badge beside the period is the time the digest in storage was written. **Rolled up** instead means the month was folded from its daily digests, because the month’s own summary has not been written yet.',
+    why: 'Nothing on this panel is live. It is a read of a file somebody else produced, so the only honest thing to show is when that file was made — a figure from this morning and a figure from ten minutes ago are not the same claim.',
+    howToRead:
+      'Treat the figures as true as of the badge, not as of now. Anything that happened since is not in them.',
+    watchOut:
+      'No badge means nothing has been written for this period at all, which is normal for a period still in progress and a problem for an old one. A period whose digest exists but reports no calls says so explicitly — that is a quiet period, not a missing one.',
+  },
+  {
+    id: 'digest/participants',
+    title: 'Participants, and the busiest call',
+    what: 'Total joins across the period, with the largest single call’s peak concurrency in brackets.',
+    why: 'Joins tell you how much the system was used; the busiest call tells you how much it was used *at once*, which is the figure capacity questions actually turn on.',
+    howToRead:
+      'The two are different measures, not a total and a subtotal. Four calls of three people each is twelve joins and a busiest call of three.',
+    watchOut:
+      'Per-call peaks cannot be added into a period peak. Two calls that each peaked at four were not eight people at once unless they overlapped, and a call summary does not record whether they did — so the single busiest call is the most that can honestly be said.',
+  },
+  {
+    id: 'digest/quality',
+    title: 'The period’s quality score',
+    what: 'One quality figure for the whole period, on the same 0–5 scale as a call’s, weighted by how many score samples each call contributed.',
+    why: 'An unweighted average would let a two-minute call count as much as a two-hour one, which is how a single bad test call drags a good day down to “something is wrong”.',
+    howToRead:
+      'Above 4 is a good period. Below 3 means something was wrong for a meaningful share of the time people spent in calls. Then go to the worst-calls list — the average is what tells you whether to look, not where.',
+    watchOut:
+      'Calls the observer could not score are left out rather than counted as zero, so a period whose score looks fine can still contain calls nobody has a quality reading for.',
+  },
+  {
+    id: 'digest/activity',
+    title: 'The activity strip',
+    what: 'How many calls started in each hour of the day, or on each day of the month. Bar heights are relative to the busiest bucket, not to a fixed scale.',
+    why: 'It puts a day in context in one glance: whether the quality figure above comes from the whole day or from one busy hour, and whether a quiet day was quiet or broken.',
+    howToRead:
+      'Hover a bar for its exact count. Hours are UTC, and a bar counts calls that *started* in that hour, not calls that were running during it — a long call appears once, in the hour it began.',
+  },
+];
+
 /* ── the registry ──────────────────────────────────────── */
 
 export const HELP_TOPICS: Record<string, HelpTopic> = topics([
   ...CONCEPTS,
+  ...DIGEST,
   ...CALL,
   ...CLIENT,
 ]);
