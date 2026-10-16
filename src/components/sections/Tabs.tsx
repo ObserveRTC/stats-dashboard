@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import styles from './Tabs.module.css';
 
 export interface TabDef {
@@ -18,6 +18,7 @@ interface TabsProps {
   defaultTabId?: string;
   /** Accessible name for the tab strip. */
   label?: string;
+  hashPrefix?: string;
 }
 
 /**
@@ -26,7 +27,7 @@ interface TabsProps {
  * Panels mount lazily and stay mounted once opened, so switching back to a tab
  * does not re-run its charts' layout work — d3 renders here are not cheap.
  */
-export function Tabs({ tabs, defaultTabId, label = 'Sections' }: TabsProps) {
+export function Tabs({ tabs, defaultTabId, label = 'Sections', hashPrefix }: TabsProps) {
   const baseId = useId();
   const [activeId, setActiveId] = useState(() => defaultTabId ?? tabs[0]?.id);
   // Panels are mounted on first visit and kept, so returning to a tab is instant.
@@ -40,6 +41,22 @@ export function Tabs({ tabs, defaultTabId, label = 'Sections' }: TabsProps) {
     setMounted((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
 
+  useEffect(() => {
+    const sync = () => {
+      const hash = window.location.hash.slice(1);
+      const wanted = hashPrefix && hash.startsWith(`${hashPrefix}/`) ? hash.slice(hashPrefix.length + 1) : null;
+      if (wanted && tabs.some(t => t.id === wanted)) select(wanted);
+      else if (!tabs.some(t => t.id === activeId)) select(tabs[0]?.id);
+    };
+    sync();
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, [tabs, hashPrefix, activeId, select]);
+  const activate = useCallback((id: string) => {
+    if (hashPrefix) window.location.hash = `${hashPrefix}/${id}`;
+    select(id);
+  }, [hashPrefix, select]);
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent, index: number) => {
       const delta =
@@ -52,10 +69,10 @@ export function Tabs({ tabs, defaultTabId, label = 'Sections' }: TabsProps) {
 
       event.preventDefault();
       const target = tabs[next];
-      select(target.id);
+      activate(target.id);
       tabRefs.current.get(target.id)?.focus();
     },
-    [tabs, select],
+    [tabs, activate],
   );
 
   if (tabs.length === 0) return null;
@@ -79,7 +96,7 @@ export function Tabs({ tabs, defaultTabId, label = 'Sections' }: TabsProps) {
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
               className={isActive ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => select(tab.id)}
+              onClick={() => activate(tab.id)}
               onKeyDown={(e) => onKeyDown(e, index)}
             >
               {tab.label}

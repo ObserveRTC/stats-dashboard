@@ -370,7 +370,7 @@ export function OverviewPage() {
                             {firstCall && (
                               <a
                                 className={styles.link}
-                                href={`/${encodeURIComponent(firstCall.roomId)}/${encodeURIComponent(firstCall.callId)}`}
+                                href={`/${encodeURIComponent(firstCall.roomId)}/${encodeURIComponent(firstCall.callId)}#call-findings`}
                               >
                                 Open a call &rarr;
                               </a>

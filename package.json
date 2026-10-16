@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test:router-mapping": "node --experimental-strip-types scripts/routerServerData.test.ts",
     "test:fixture": "node --experimental-strip-types scripts/realFixture.test.ts",
-    "test": "npm run test:no-write-path && npm run test:offline-build && npm run test:router-mapping && npm run test:fixture && npm run test:joins && npm run test:issue-lanes && npm run test:transport-timeline && npm run test:score-explanation && npm run test:call-summary && npm run test:tab-visibility && npm run test:csv && npm run test:sample-reasons && npm run test:router-entities && npm run test:call-dashboard && npm run test:worker-requests && npm run test:ice-candidate-story && npm run test:storage-config && npm run test:digest-schema && npm run test:digest-model && npm run test:proxy-streams && npm run test:sample-patch && npm run test:help && npm run test:check-catalogue && npm run test:digest-patch && npm run test:digest-server",
+    "test": "npm run test:no-write-path && npm run test:offline-build && npm run test:router-mapping && npm run test:fixture && npm run test:joins && npm run test:issue-lanes && npm run test:transport-timeline && npm run test:score-explanation && npm run test:call-summary && npm run test:tab-visibility && npm run test:csv && npm run test:sample-reasons && npm run test:router-entities && npm run test:call-dashboard && npm run test:worker-requests && npm run test:ice-candidate-story && npm run test:storage-config && npm run test:digest-schema && npm run test:digest-model && npm run test:proxy-streams && npm run test:sample-patch && npm run test:help && npm run test:check-catalogue && npm run test:digest-patch && npm run test:digest-server && npm run test:digest-navigation",
     "test:joins": "node --experimental-strip-types scripts/clientJoins.test.ts",
     "test:issue-lanes": "node --experimental-strip-types scripts/issueLanes.test.ts",
     "test:transport-timeline": "node --experimental-strip-types scripts/transportTimeline.test.ts",
@@ -43,7 +43,8 @@
     "digest": "node src/digest-server/cli.mjs",
     "digest:serve": "node src/digest-server/server.mjs",
     "digest:fixture": "node src/digest-server/test/makeFixture.mjs",
-    "docker:digest": "docker build -f Dockerfile.digest -t observertc/digest-server:local ."
+    "docker:digest": "docker build -f Dockerfile.digest -t observertc/digest-server:local .",
+    "test:digest-navigation": "node --experimental-strip-types scripts/digestNavigation.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1061.0",

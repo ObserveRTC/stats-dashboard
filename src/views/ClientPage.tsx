@@ -52,11 +52,16 @@ interface CompareTarget {
   producingClientId: string | null;
 }
 
+import { useCallDigest } from '../hooks/useCallDigest.ts';
+import { DigestNotice } from '../components/digest/QualityFindings.tsx';
+
 export function ClientPage() {
   const params = useParams() ?? {};
   const roomId = (params.roomId as string) ?? '';
   const callId = (params.callId as string) ?? '';
   const clientId = (params.clientId as string) ?? '';
+  const digest = useCallDigest(roomId, callId);
+  const digestClient = digest.state === 'ready' ? digest.document?.clients.find(c => c.clientId === clientId) : undefined;
 
   const { showBanner, clearBanner } = useAppStore();
   const decompressStats = useStatsWorker();
@@ -375,9 +380,30 @@ export function ClientPage() {
 
   const hasServerView = !serverData.empty;
 
+  // Archives without SFU mappings expose RTP instead of producer/consumer
+  // sections. Resolve that destination only after the raw report has loaded.
+  useEffect(() => {
+    if (loading || !entry) return;
+    const resolveEvidence = () => {
+      const hash = window.location.hash.slice(1);
+      const fallback = !hasServerView && hash === 'consumers' ? 'inbound-rtp'
+        : !hasServerView && hash === 'producers' ? 'outbound-rtp' : null;
+      if (!fallback) return;
+      window.history.replaceState(null, '', `#${fallback}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    };
+    resolveEvidence();
+    window.addEventListener('hashchange', resolveEvidence);
+    return () => window.removeEventListener('hashchange', resolveEvidence);
+  }, [loading, entry, hasServerView]);
+
+
   return (
     <div className={styles.wrapper}>
       <ClientBar roomId={roomId} callId={callId} currentClientId={clientId} displayName={displayName} />
+
+      <DigestNotice answer={digest} />
+      {digest.state === 'ready' && !digestClient && <p role="status">This client has no assessment in the call digest.</p>}
 
       {loading && <LoadingSpinner>Loading client report...</LoadingSpinner>}
 
@@ -404,6 +430,7 @@ export function ClientPage() {
               routerSamples={routerSamples}
               eventBus={eventBus}
               clientLabel={label}
+              digestClient={digestClient} roomId={roomId} callId={callId}
             />
           )}
 

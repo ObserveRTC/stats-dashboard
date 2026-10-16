@@ -1,0 +1,14 @@
+.root { min-width: 0; overflow-wrap: anywhere; }
+.root h2 { font-size: 1.2rem; }
+.root h3 { margin-top: 1.5rem; font-size: 1rem; }
+.root h4 { margin-bottom: .4rem; }
+.root a { color: var(--accent); }
+.notice { padding: 1rem; margin: .75rem 0; border: 1px solid var(--border-light); border-radius: 8px; background: var(--card-bg); overflow-wrap: anywhere; }
+.notice p { margin: .5rem 0 0; color: var(--text-muted); }
+.coverage { color: var(--text-muted); font-size: .8rem; }
+.check { margin: .5rem 0; border: 1px solid var(--border-light); border-radius: 6px; background: var(--card-bg); }
+.check summary { cursor: pointer; padding: .85rem; }
+.detail { padding: 0 1rem .75rem; }
+.outcome { display: inline-block; margin-left: .6rem; font-size: .8rem; color: var(--text-muted); }
+.outcome[data-outcome="failed"] { color: var(--quality-poor); }
+.outcome[data-outcome="passed"] { color: var(--quality-good); }

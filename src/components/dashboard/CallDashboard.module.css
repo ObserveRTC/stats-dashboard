@@ -357,3 +357,14 @@
   align-items: center;
   gap: var(--space-3);
 }
+
+.withNavigation { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: 1rem; }
+.sideNav { align-self: start; display: flex; flex-direction: column; gap: .25rem; padding: .75rem; background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+.sideNav a { color: var(--text-muted); padding: .5rem; text-decoration: none; overflow-wrap: anywhere; }
+.sideNav a:hover { color: var(--accent); }
+.sideNav strong { margin: .5rem 0; font-size: .8rem; }
+@media(max-width: 800px) { .withNavigation { grid-template-columns: minmax(0,1fr); } .sideNav { flex-direction: row; flex-wrap: wrap; } .sideNav strong { flex-basis: 100%; } }
+
+.digestSummary { padding: 1rem; margin-top: .75rem; background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+.digestSummary p { margin-bottom: 0; }
+.digestSummary a { color: var(--accent); }

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { CallSession, CallSummary, MediasoupRouterSample } from '../../api/types.ts';
 import { buildDashboardModel } from '../../utils/dashboardModel.ts';
 import { useClientLoadStore } from '../../stores/clientLoadStore.ts';
@@ -13,6 +13,9 @@ import { DiagnosticsCard } from './DiagnosticsCard.tsx';
 import { CallObjectBrowser } from './CallObjectBrowser.tsx';
 import { RouterDetailSection } from './RouterDetailSection.tsx';
 import styles from './CallDashboard.module.css';
+import { useCallDigest } from '../../hooks/useCallDigest.ts';
+import { QualityFindings, DigestNotice } from '../digest/QualityFindings.tsx';
+import { orderedSections } from '../../digest/index.ts';
 
 /**
  * The call quality dashboard.
@@ -48,6 +51,15 @@ export function CallDashboard({
 }) {
   // Subscribed rather than read once: each row settles on its own, so the
   // model rebuilds as loads land instead of waiting for all of them.
+  const digest = useCallDigest(roomId, callId);
+  const ready = digest.state === 'ready' ? digest.document : null;
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (ready && (hash === 'call-findings' || hash.startsWith('findings-'))) {
+      document.getElementById(hash)?.scrollIntoView({ block: 'start' });
+    }
+  }, [ready]);
+
   const loadedClients = useClientLoadStore((s) => s.entries);
 
   const model = useMemo(
@@ -66,24 +78,37 @@ export function CallDashboard({
   const diagnosticContext = useMemo(() => ({ routerSamples }), [routerSamples]);
 
   return (
-    <div className={styles.root}>
+    <div className={`${styles.root} ${styles.withNavigation}`}>
+      <nav className={styles.sideNav} aria-label="Call analysis">
+        <strong>Call analysis</strong>
+        {[['call-summary','Call summary'],['call-clients','Clients'],['call-quality','Quality per client'],['call-topology','SFU topology'],['call-routers','Routers'],['call-diagnostics','Diagnostics'],['call-samples','Sample browser']].map(([id,label]) => <a key={id} href={`#${id}`}>{label}</a>)}
+        {ready && <><strong>From quality digest</strong><a href="#call-findings">All quality checks</a>{orderedSections().map(s => <a key={s.id} href={`#findings-${s.id}`}>{s.label}</a>)}</>}
+      </nav>
       <div className={styles.stack}>
+        <DigestNotice answer={digest} />
+        <div id="call-summary" className={styles.stack}>
         <StatCards cards={model.statCards} />
         <CallFactsCard groups={model.factGroups} />
-        <QualityChart
+        {ready && <aside className={styles.digestSummary}><strong>Quality digest available</strong><p>{ready.coverage.clientsAssessed} / {ready.coverage.clientsObserved} clients assessed · {ready.checks.filter(c => c.counts.failed > 0).length} checks with failures. <a href="#call-findings">Review quality checks →</a></p></aside>}
+        </div>
+        {ready && <section id="call-findings"><QualityFindings clients={ready.clients} roomId={roomId} callId={callId} />{ready.coverage.limitations?.map((text,i) => <p key={i}>{text}</p>)}</section>}
+        <div id="call-quality"><QualityChart
           chart={model.qualityChart}
           startLabel={model.startLabel}
           endLabel={model.endLabel}
         />
-        <SfuTopologyCard topology={model.topology} />
-        <RoutersCard rows={model.routerRows} />
-        <ClientsCard
+        </div>
+        <div id="call-topology"><SfuTopologyCard topology={model.topology} /></div>
+        <div id="call-routers"><RoutersCard rows={model.routerRows} /></div>
+        <div id="call-clients"><ClientsCard
           clients={model.clients}
           onView={onViewClient}
           onLoad={onLoadClient}
           onLoadAll={handleLoadAll}
+          findingsHref={clientId => ready?.clients.some(c => c.clientId === clientId) ? `/${[roomId,callId,clientId].map(encodeURIComponent).join('/')}#client-overview/findings` : undefined}
         />
-        <DiagnosticsCard context={diagnosticContext} />
+        </div>
+        <div id="call-diagnostics"><DiagnosticsCard context={diagnosticContext} /></div>
 
         {/* One section per router, in the order the topology lists them: the
             SFU's own account of what it held, before any of it is attributed
@@ -91,7 +116,7 @@ export function CallDashboard({
         {[...routerSamples.entries()].map(([routerId, sample]) => (
           <RouterDetailSection key={routerId} routerId={routerId} sample={sample} />
         ))}
-        <CallObjectBrowser roomId={roomId} callId={callId} objectNames={objectNames} />
+        <div id="call-samples"><CallObjectBrowser roomId={roomId} callId={callId} objectNames={objectNames} /></div>
       </div>
     </div>
   );

@@ -21,8 +21,10 @@ export function ClientsCard({
   onView,
   onLoad,
   onLoadAll,
+  findingsHref,
 }: {
   clients: DashboardClient[];
+  findingsHref?: (clientId: string) => string | undefined;
   onView: (clientId: string) => void;
   onLoad: (clientId: string) => void;
   onLoadAll: () => void;
@@ -144,6 +146,7 @@ export function ClientsCard({
                     >
                       View
                     </button>
+                    {findingsHref?.(p.clientId) && <a className="btn btn-ghost" href={findingsHref(p.clientId)}>Findings</a>}
                   </td>
                 </tr>
               ))}

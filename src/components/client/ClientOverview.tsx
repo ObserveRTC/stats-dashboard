@@ -17,6 +17,8 @@ import { SfuMappingCard } from '../sfu/SfuMappingCard.tsx';
 import { AttachmentsCard } from '../sections/AttachmentsCard.tsx';
 import { Tabs, type TabDef } from '../sections/Tabs.tsx';
 import styles from './ClientOverview.module.css';
+import { QualityFindings } from '../digest/QualityFindings.tsx';
+import type { ClientDigest } from '../../digest/types.ts';
 
 interface ClientOverviewProps {
   processedStats: ProcessWebRTCStatsResult;
@@ -25,6 +27,9 @@ interface ClientOverviewProps {
   routerSamples: Map<string, MediasoupRouterSample>;
   eventBus?: EventTarget;
   clientLabel?: string;
+  digestClient?: ClientDigest;
+  roomId?: string;
+  callId?: string;
 }
 
 /**
@@ -62,6 +67,7 @@ export function ClientOverview({
   routerSamples,
   eventBus,
   clientLabel,
+  digestClient, roomId, callId,
 }: ClientOverviewProps) {
   // Shared by the score chart and the reasons browser below it.
   const [selectedSample, setSelectedSample] = useState<number | null>(null);
@@ -212,9 +218,11 @@ export function ClientOverview({
     },
   ];
 
+  if (digestClient && roomId && callId) tabs.push({ id: 'findings', label: 'Findings', badge: digestClient.checks.filter(c => c.outcome === 'failed').length, render: () => <QualityFindings clients={[digestClient]} roomId={roomId} callId={callId} /> });
+
   return (
     <div className={styles.wrapper}>
-      <Tabs tabs={tabs} label="Client overview" />
+      <Tabs tabs={tabs} label="Client overview" hashPrefix="client-overview" />
     </div>
   );
 }
