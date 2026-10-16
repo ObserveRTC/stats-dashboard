@@ -107,8 +107,11 @@ async function route(req, res) {
     }
 
     if ((parts[1] === 'day' || parts[1] === 'month') && parts[2]) {
-      const { digest, job } = await processPeriod({ period: parts[1], id: parts[2] });
-      return send(res, 200, { job, digest });
+      // `summary`, not `digest`: a period document is a different shape, and
+      // destructuring the wrong name shipped `digest: undefined` to the caller
+      // with a 200 beside it.
+      const { summary, job } = await processPeriod({ period: parts[1], id: parts[2] });
+      return send(res, 200, { job, summary });
     }
   }
 
