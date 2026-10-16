@@ -12,16 +12,9 @@
 
 import type {
   CallDigest,
-  PeriodDigest,
-  Manifest,
-  Page,
-  CallSearchRow,
-  ReadResult,
-  ParticipantDigest,
-  StreamDigest,
-  PathDigest,
-  TimelineRecord,
-  Finding,
+  PeriodSummary,
+  ClientDigest,
+  ClientCheck,
 } from './types.ts';
 
 /** Ajv attaches the failure list to the function itself after a false return. */
@@ -39,13 +32,6 @@ export interface Validator<T> {
 }
 
 export declare const validateCallDigest: Validator<CallDigest>;
-export declare const validatePeriodDigest: Validator<PeriodDigest>;
-export declare const validateManifest: Validator<Manifest>;
-export declare const validatePage: Validator<Page>;
-export declare const validateCallSearchRow: Validator<CallSearchRow>;
-export declare const validateReadResult: Validator<ReadResult>;
-export declare const validateParticipantDigest: Validator<ParticipantDigest>;
-export declare const validateStreamDigest: Validator<StreamDigest>;
-export declare const validatePathDigest: Validator<PathDigest>;
-export declare const validateTimelineRecord: Validator<TimelineRecord>;
-export declare const validateFinding: Validator<Finding>;
+export declare const validatePeriodSummary: Validator<PeriodSummary>;
+export declare const validateClientDigest: Validator<ClientDigest>;
+export declare const validateClientCheck: Validator<ClientCheck>;

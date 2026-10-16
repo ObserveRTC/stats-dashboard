@@ -48,20 +48,13 @@ const OUT_DIR = join(REPO, 'src', 'digest');
  */
 const VALIDATED = [
   { key: 'CallDigest', schema: 'call-digest.json', pointer: '' },
-  { key: 'PeriodDigest', schema: 'period-digest.json', pointer: '' },
-  { key: 'Manifest', schema: 'read.json', pointer: '#/$defs/manifest' },
-  { key: 'Page', schema: 'read.json', pointer: '#/$defs/page' },
-  { key: 'CallSearchRow', schema: 'read.json', pointer: '#/$defs/callSearchRow' },
-  { key: 'ReadResult', schema: 'read.json', pointer: '#/$defs/readResult' },
-  { key: 'ParticipantDigest', schema: 'detail.json', pointer: '#/$defs/participantDigest' },
-  { key: 'StreamDigest', schema: 'detail.json', pointer: '#/$defs/streamDigest' },
-  { key: 'PathDigest', schema: 'detail.json', pointer: '#/$defs/pathDigest' },
-  { key: 'TimelineRecord', schema: 'detail.json', pointer: '#/$defs/timelineRecord' },
-  { key: 'Finding', schema: 'detail.json', pointer: '#/$defs/finding' },
+  { key: 'PeriodSummary', schema: 'period-summary.json', pointer: '' },
+  { key: 'ClientDigest', schema: 'call-digest.json', pointer: '#/$defs/clientDigest' },
+  { key: 'ClientCheck', schema: 'call-digest.json', pointer: '#/$defs/clientCheck' },
 ];
 
 /** Types generated from each schema file, including the shared $defs. */
-const TYPED = ['common.json', 'call-digest.json', 'period-digest.json', 'detail.json', 'read.json'];
+const TYPED = ['common.json', 'call-digest.json', 'period-summary.json'];
 
 async function loadSchemas() {
   const files = (await readdir(SCHEMA_DIR)).filter((f) => f.endsWith('.json')).sort();
@@ -245,7 +238,7 @@ function buildBundle(schemas) {
   // The two root documents, which have properties rather than $defs.
   for (const [key, file] of [
     ['callDigest', 'call-digest.json'],
-    ['periodDigest', 'period-digest.json'],
+    ['periodSummary', 'period-summary.json'],
   ]) {
     const { $schema: _s, $id: _i, $defs: _d, ...root } = schemas.get(file);
     add(key, root, file);
@@ -253,8 +246,8 @@ function buildBundle(schemas) {
 
   return {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: 'https://schemas.observertc.org/digest/v1/bundle.json',
-    title: 'DigestContractV1',
+    $id: 'https://schemas.observertc.org/digest/v2/bundle.json',
+    title: 'DigestContractV2',
     description:
       'Carrier for the generated types. Not a wire format — nothing ever serializes this object; ' +
       'it exists so every contract type is reachable from one root and therefore gets emitted.',
@@ -362,12 +355,7 @@ async function generateRegistry() {
   const dir = join(PACKAGE, 'registry');
   const read = async (p) => JSON.parse(await readFile(join(dir, p), 'utf8'));
 
-  const metrics = await read('metrics.v1.json');
-  const histograms = await read('histograms.v1.json');
-  const capabilities = await read('capabilities.v1.json');
-  const reasonCodes = await read('reason-codes.v1.json');
-  const policy = await read(join('policies', 'conservative-v1.json'));
-
+  const catalogue = await read('checks.v2.json');
   const json = (value) => JSON.stringify(value, null, 2);
 
   return `/* eslint-disable */
@@ -377,80 +365,85 @@ async function generateRegistry() {
  * Source: digest-schema/registry/*.json
  * Regenerate: npm run schema:generate
  *
- * Safe in the browser: this is metadata, not validation code. The UI needs a
- * metric's unit to format it, its numerator and denominator to explain it, and
- * a histogram's bounds to read a bucket — none of which it may invent.
- */
-
-export const METRIC_REGISTRY = ${json(metrics)} as const;
-
-export const HISTOGRAM_REGISTRY = ${json(histograms)} as const;
-
-export const CAPABILITY_REGISTRY = ${json(capabilities)} as const;
-
-export const REASON_CODES = ${json(reasonCodes)} as const;
-
-/**
- * The policy the fixtures are built against.
+ * Safe in the browser: metadata, not validation code. This is the half of the
+ * contract the UI needs in order to render a digest at all — a digest stores a
+ * check's \`id\` and its outcome, and every word around it comes from here.
  *
- * Shipped so the UI can name the policy behind a figure and describe how a
- * category was decided. A digest produced under a different \`policyId\` is
- * described by *that* policy, which the server fetches by id — this constant is
- * the one the fixtures use, not an assumption about production.
+ * The same reasoning as CLIENT_ISSUE_TYPES, applied one level up. An issue's
+ * label, meaning and chart live in that registry; a check's question, section
+ * and rule live in this one. Storage holds neither, so there is exactly one
+ * place each sentence is written and no way for two copies to drift.
  */
-export const CONSERVATIVE_V1_POLICY = ${json(policy)} as const;
 
-export type MetricDefinition = (typeof METRIC_REGISTRY)['metrics'][number];
-export type HistogramDefinition = (typeof HISTOGRAM_REGISTRY)['definitions'][number];
+export const CHECK_CATALOGUE = ${json(catalogue)} as const;
 
-const METRICS_BY_ID = new Map<string, MetricDefinition>(
-  METRIC_REGISTRY.metrics.map((m) => [m.metricId, m]),
+export type CheckSection = (typeof CHECK_CATALOGUE)['sections'][number];
+export type CheckDefinition = (typeof CHECK_CATALOGUE)['checks'][number];
+
+/** The catalogue version the rules were written against. */
+export const CATALOGUE_VERSION = CHECK_CATALOGUE.catalogueVersion;
+
+const CHECKS_BY_ID = new Map<string, CheckDefinition>(
+  CHECK_CATALOGUE.checks.map((c) => [c.id, c]),
 );
 
-const HISTOGRAMS_BY_ID = new Map<string, HistogramDefinition>(
-  HISTOGRAM_REGISTRY.definitions.map((d) => [d.definitionId, d]),
+const SECTIONS_BY_ID = new Map<string, CheckSection>(
+  CHECK_CATALOGUE.sections.map((s) => [s.id, s]),
 );
 
-/** The definition for a metric id, or undefined when this version has none. */
-export function metricDefinition(metricId: string): MetricDefinition | undefined {
-  return METRICS_BY_ID.get(metricId);
+/**
+ * The definition for a check id, or undefined when this build has none.
+ *
+ * Undefined is a real case, not a bug: a digest written by a newer processor
+ * may name a check this UI has never heard of. The caller shows it as an
+ * unrecognised check with its raw id rather than hiding it — a check the reader
+ * cannot name is still a check that failed.
+ */
+export function checkDefinition(id: string): CheckDefinition | undefined {
+  return CHECKS_BY_ID.get(id);
 }
 
-export function histogramDefinition(definitionId: string): HistogramDefinition | undefined {
-  return HISTOGRAMS_BY_ID.get(definitionId);
+export function checkSection(id: string): CheckSection | undefined {
+  return SECTIONS_BY_ID.get(id);
+}
+
+/** Sections in display order. */
+export function orderedSections(): CheckSection[] {
+  return [...CHECK_CATALOGUE.sections].sort((a, b) => a.order - b.order);
+}
+
+/** A section's checks in display order. */
+export function checksInSection(sectionId: string): CheckDefinition[] {
+  return CHECK_CATALOGUE.checks
+    .filter((c) => c.section === sectionId)
+    .sort((a, b) => a.order - b.order);
 }
 
 /**
- * A reason code's label, or a readable fallback.
+ * A check's question, or a readable fallback.
  *
- * Never returns empty and never swallows the code: an unrecognised code is
- * humanized and shown with its raw form in brackets, so a reason a newer
- * producer emits stays visible and greppable instead of becoming "unknown
- * error". The contract requires this fallback of every consumer.
+ * Never returns empty and never swallows the id, for the same reason the v1
+ * contract required it of reason codes: an unrecognised check must stay visible
+ * and greppable instead of becoming "unknown".
  */
-export function reasonLabel(code: string): string {
-  const known = (REASON_CODES.codes as Record<string, string | undefined>)[code];
-  if (known) return known;
-  const humanized = code.replace(/[-.]/g, ' ').trim();
-  return humanized ? \`\${humanized} (\${code})\` : code;
+export function checkQuestion(id: string): string {
+  return CHECKS_BY_ID.get(id)?.question ?? \`Unrecognised check (\${id})\`;
 }
 
-/** Bucket edge labels for a histogram definition: (-inf, b0], (b0, b1], ..., (bn, +inf). */
-export function histogramBucketLabels(
-  definitionId: string,
-  format: (value: number) => string = String,
-): string[] | undefined {
-  const definition = HISTOGRAMS_BY_ID.get(definitionId);
-  if (!definition) return undefined;
-
-  const bounds = definition.upperBounds as readonly number[];
-  const labels = [\`\\u2264 \${format(bounds[0]!)}\`];
-  for (let i = 1; i < bounds.length; i += 1) {
-    labels.push(\`\${format(bounds[i - 1]!)}\\u2013\${format(bounds[i]!)}\`);
-  }
-  labels.push(\`> \${format(bounds[bounds.length - 1]!)}\`);
-  return labels;
-}
+/**
+ * Every built-in issue type the catalogue claims, to the check that claims it.
+ *
+ * Built eagerly so the processor can assert the inverse — that no built-in
+ * issue type is unclaimed. An issue with no check would fire, be stored, and
+ * never appear in any section.
+ */
+export const CHECK_BY_ISSUE_TYPE: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(
+    CHECK_CATALOGUE.checks.flatMap((c) =>
+      ((c as { issueTypes?: readonly string[] }).issueTypes ?? []).map((t) => [t, c.id]),
+    ),
+  ),
+);
 `;
 }
 

@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.observertc.org/digest/v2/period-summary.json",
+  "title": "Period summary, version 2",
+  "description": "One reporting day or month, aggregated from saved digests. Stored at `digests/daily-summaries/{yyyy-mm-dd}.json` and `digests/monthly-summaries/{yyyy-mm}.json`.\n\nA day aggregates call digests; a month aggregates DAY SUMMARIES, not calls. That hierarchy is what keeps a month cheap, and it is also why `sources` has to say how complete it was: a month built from 28 of 31 days is not a quiet month.\n\nThe aggregation rules this shape exists to enforce:\n\n- Every count names its denominator (`outcomeCounts.evaluated`). No bare rates are stored; the UI divides, and can therefore show the denominator beside the figure.\n- Affected call and client counts are UNIONS over identity, so re-reading a source cannot double-count.\n- A month sums numerators and denominators from its days. It never averages daily percentages, because a 2% day with 10 sessions and a 2% day with 10,000 are not equal evidence.\n- Percentiles and distributions are not aggregated at all unless they are mergeable. Where a figure cannot be merged honestly the field is absent and the UI shows it unavailable.\n- Classification buckets are disjoint and are never summed to get 'affected clients'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provenance", "period", "sources", "totals", "checks"],
+  "properties": {
+    "provenance": { "$ref": "common.json#/$defs/provenance" },
+    "period": { "$ref": "#/$defs/period" },
+    "sources": { "$ref": "#/$defs/sources" },
+    "totals": { "$ref": "#/$defs/totals" },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/periodCheck" }
+    },
+    "classification": { "$ref": "#/$defs/classificationCounts" },
+    "trend": { "$ref": "#/$defs/trend" },
+    "affected": {
+      "description": "Drilldown. For each check that anything failed, which calls and which client sessions to open.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/affectedByCheck" }
+    }
+  },
+  "$defs": {
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "timezone"],
+      "properties": {
+        "kind": { "enum": ["day", "month"] },
+        "id": {
+          "description": "`YYYY-MM-DD` for a day, `YYYY-MM` for a month.",
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"
+        },
+        "timezone": {
+          "description": "UTC, always. Not configurable: a reporting day has to mean one thing across storage, aggregation and the page, and server-absolute time is the only definition that survives clients in other zones and a browser with a wrong clock.",
+          "const": "UTC"
+        },
+        "provisional": {
+          "description": "True while the period can still gain data — the current day, or the current month. A provisional summary is correct for what it has read and is expected to change, which is a different statement from incomplete.",
+          "type": "boolean"
+        }
+      }
+    },
+    "sources": {
+      "title": "What this was built from, and what was missed",
+      "description": "The field that makes a partial period impossible to misread as an empty one. `complete` is false whenever anything was found and not read, or expected and not found.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "found", "read", "failed", "complete"],
+      "properties": {
+        "kind": {
+          "description": "`calls` for a day, `days` for a month.",
+          "enum": ["calls", "days"]
+        },
+        "found": { "type": "integer", "minimum": 0 },
+        "read": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "complete": { "type": "boolean" },
+        "failures": {
+          "description": "Why each unread source was unread. Distinguishes a missing object, an invalid one, and one written by a schema version this build does not implement — three different operator actions.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/sourceFailure" }
+        },
+        "missingDays": {
+          "description": "Months only: days in the month with no summary at all. A day that genuinely had no calls still gets a summary, so a day listed here is an unprocessed day, not a quiet one.",
+          "type": "array",
+          "items": { "$ref": "common.json#/$defs/reportingDay" }
+        }
+      }
+    },
+    "sourceFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reason"],
+      "properties": {
+        "id": {
+          "description": "The callId or the day id that could not be read.",
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "enum": [
+            "not-found",
+            "invalid-json",
+            "schema-invalid",
+            "unsupported-schema-version",
+            "read-failed"
+          ]
+        },
+        "detail": { "type": "string", "maxLength": 300 }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calls", "clientSessions", "clientSessionsAssessed"],
+      "properties": {
+        "calls": {
+          "description": "Distinct callIds read. A union, so a rebuild cannot inflate it.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "clientSessions": {
+          "description": "Distinct callId+clientId pairs.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "clientSessionsAssessed": { "type": "integer", "minimum": 0 },
+        "observedSeconds": { "type": "number", "minimum": 0 },
+        "assessedSeconds": { "type": "number", "minimum": 0 },
+        "unassessedSeconds": { "type": "number", "minimum": 0 },
+        "callSeconds": {
+          "description": "Summed call wall-clock duration. Kept separate from the client-second figures above on purpose: they are not comparable and a page that mixes them reports impaired time exceeding elapsed time.",
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "periodCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "counts"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "counts": {
+          "description": "Over client sessions, with `evaluated` as the denominator.",
+          "$ref": "common.json#/$defs/outcomeCounts"
+        },
+        "callsAffected": {
+          "description": "Distinct calls with at least one failing client session. A union over callId, never a sum of per-day values.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedSeconds": {
+          "description": "Summed assessed client-seconds inside failing intervals. Absent where the rule has no interval, and absent in a month if any contributing day lacked it — a partial sum would read as a smaller problem.",
+          "type": ["number", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "classificationCounts": {
+      "title": "Client sessions by what their evidence amounts to",
+      "description": "Disjoint. These four sum to `totals.clientSessions`, which is the only sum that is valid here — adding any subset to get 'affected clients' double-counts, because a session is classified once by its strongest evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qoeSymptom",
+        "qosOnly",
+        "noIssueWithinCoverage",
+        "insufficientEvidence"
+      ],
+      "properties": {
+        "qoeSymptom": { "type": "integer", "minimum": 0 },
+        "qosOnly": { "type": "integer", "minimum": 0 },
+        "noIssueWithinCoverage": { "type": "integer", "minimum": 0 },
+        "insufficientEvidence": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "trend": {
+      "title": "Quality across the period",
+      "description": "Hour buckets for a day, day buckets for a month. Each bucket carries its own denominator so an hour with two sessions is not drawn as confidently as an hour with two hundred.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket", "buckets"],
+      "properties": {
+        "bucket": { "enum": ["hour", "day"] },
+        "buckets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/trendBucket" }
+        }
+      }
+    },
+    "trendBucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "clientSessions", "clientSessionsFailed"],
+      "properties": {
+        "at": { "$ref": "common.json#/$defs/instant" },
+        "clientSessions": { "type": "integer", "minimum": 0 },
+        "clientSessionsFailed": {
+          "description": "Sessions with at least one failing check. Assigned to the bucket the session STARTED in, matching the call-to-day rule, so one session is counted once.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "clientSessionsAssessed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "affectedByCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "calls": {
+          "type": "array",
+          "items": { "$ref": "common.json#/$defs/callRef" }
+        },
+        "clientSessions": {
+          "description": "The full roomId+callId+clientId triple, so the UI builds /{roomId}/{callId}/{clientId} without opening a single call digest.",
+          "type": "array",
+          "items": { "$ref": "common.json#/$defs/clientSessionRef" }
+        },
+        "truncated": {
+          "description": "True when the lists above were capped. A capped list is a navigation aid, not a count — read `counts` and `callsAffected` for the numbers.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

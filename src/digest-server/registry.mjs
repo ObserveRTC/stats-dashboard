@@ -1,17 +1,14 @@
 /**
- * The contract registry.
+ * The check catalogue, read straight from the contract.
  *
- * Read straight from `digest-schema/` at the repo root — the one thing this
- * processor and the dashboard share, and now the one copy of it. There used to
- * be a checksummed `vendor/` copy here, with a sync script and a drift check,
- * for a single reason: a Docker build context cannot reach outside the
- * directory it is given, and the image was built from this folder. It is built
- * from the repo root now (`Dockerfile.digest`), so the contract is in context
- * and the copy is gone.
+ * `digest-schema/registry/checks.v2.json` is the single source of truth for
+ * which questions exist, which section each belongs to and which built-in issue
+ * types it claims. The dashboard reads the same file through generated
+ * TypeScript; this reads the JSON directly. Neither copies it.
  *
- * This is still the only module that knows where the contract comes from. When
- * `@observertc/digest-schema` is published, the two lines below become an
- * import of that package and nothing else here changes.
+ * This is the only module here that knows where the contract comes from. When
+ * `@observertc/digest-schema` is published, the three lines below become an
+ * import of that package and nothing else in this app changes.
  */
 
 import { readFileSync } from 'node:fs';
@@ -23,59 +20,59 @@ const CONTRACT = resolve(HERE, '..', '..', 'digest-schema');
 
 const read = (...parts) => JSON.parse(readFileSync(join(CONTRACT, ...parts), 'utf8'));
 
-export const METRIC_REGISTRY = read('registry', 'metrics.v1.json');
-export const HISTOGRAM_REGISTRY = read('registry', 'histograms.v1.json');
-export const CAPABILITY_REGISTRY = read('registry', 'capabilities.v1.json');
-export const CONSERVATIVE_V1_POLICY = read('registry', 'policies', 'conservative-v1.json');
-
-/** Identity of the calculation that produced a digest, for `provenance`. */
-export const PROCESSOR_VERSION = 'digest-server-demo-0.1.0';
-export const POLICY_ID = CONSERVATIVE_V1_POLICY.policyId;
-
-/** Metric ids grouped by the stat family they are extracted from. */
-export const METRICS_BY_FAMILY = {
-  inboundRtpAudio: [
-    'audio.inbound.loss',
-    'audio.inbound.jitter',
-    'audio.inbound.bitrate',
-    'audio.inbound.speechConcealment',
-    'audio.inbound.jitterBufferDelay',
-  ],
-  inboundRtpVideo: [
-    'video.inbound.loss',
-    'video.inbound.jitter',
-    'video.inbound.bitrate',
-    'video.inbound.freezeShare',
-    'video.inbound.decodeTime',
-    'video.inbound.fps',
-  ],
-  outboundRtpAudio: ['audio.outbound.bitrate'],
-  outboundRtpVideo: [
-    'video.outbound.bitrate',
-    'video.outbound.encodeTime',
-    'video.outbound.cpuLimitedShare',
-    'video.outbound.bandwidthLimitedShare',
-  ],
-  remoteInboundAudio: ['audio.outbound.remoteLoss', 'audio.outbound.rtcpRtt'],
-  remoteInboundVideo: ['video.outbound.remoteLoss', 'video.outbound.rtcpRtt'],
-  candidatePair: ['transport.iceRtt'],
-  transportBytesOut: ['transport.rtpBytesSent'],
-  transportBytesIn: ['transport.rtpBytesReceived'],
-};
-
-/** Every metric id this process can produce at all. */
-export const ALL_METRIC_IDS = [...new Set(Object.values(METRICS_BY_FAMILY).flat())];
+export const CHECK_CATALOGUE = read('registry', 'checks.v2.json');
 
 /**
- * Metric ids in the registry that this app does not implement.
+ * The rules version written into every digest's provenance.
  *
- * Empty today, and checked by a test rather than asserted in prose: a registry
- * entry with no extractor would otherwise be silently absent from every digest,
- * which is the difference between "this build cannot measure it" and "nobody
- * noticed it was missing".
+ * Derived from the catalogue rather than declared here, because the catalogue
+ * is what changes when a question or a rule changes. Bumping it means the same
+ * inputs may now answer differently; existing digests are not regenerated and
+ * keep the answer their rules gave.
  */
-export function unimplementedMetricIds() {
-  return METRIC_REGISTRY.metrics
-    .map((m) => m.metricId)
-    .filter((id) => !ALL_METRIC_IDS.includes(id));
+export const RULES_VERSION = CHECK_CATALOGUE.catalogueVersion;
+
+export const SCHEMA_VERSION = 2;
+
+export const SECTIONS = [...CHECK_CATALOGUE.sections].sort((a, b) => a.order - b.order);
+
+export const CHECKS = [...CHECK_CATALOGUE.checks].sort(
+  (a, b) =>
+    (SECTIONS.findIndex((s) => s.id === a.section) - SECTIONS.findIndex((s) => s.id === b.section)) ||
+    a.order - b.order,
+);
+
+export const CHECK_IDS = CHECKS.map((c) => c.id);
+
+const BY_ID = new Map(CHECKS.map((c) => [c.id, c]));
+
+export function checkDefinition(id) {
+  const found = BY_ID.get(id);
+  if (!found) throw new Error(`no such check in the catalogue: ${id}`);
+  return found;
+}
+
+/** issue type -> the one check that claims it. */
+export const CHECK_BY_ISSUE_TYPE = Object.freeze(
+  Object.fromEntries(CHECKS.flatMap((c) => (c.issueTypes ?? []).map((t) => [t, c.id]))),
+);
+
+/** check id -> the issue types it claims, as a Set for membership tests. */
+export const ISSUE_TYPES_BY_CHECK = Object.freeze(
+  Object.fromEntries(CHECKS.map((c) => [c.id, new Set(c.issueTypes ?? [])])),
+);
+
+export const EVENT_TYPES_BY_CHECK = Object.freeze(
+  Object.fromEntries(CHECKS.map((c) => [c.id, new Set(c.eventTypes ?? [])])),
+);
+
+/**
+ * Check ids the engine has no rule for.
+ *
+ * Exported so a test can assert it is empty. A catalogue entry with no rule
+ * would be a question the UI renders a heading for and never answers — worse
+ * than an absent check, because the reader assumes it was evaluated.
+ */
+export function checksWithoutRule(implemented) {
+  return CHECK_IDS.filter((id) => !implemented.has(id));
 }

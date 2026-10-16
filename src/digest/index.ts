@@ -1,146 +1,103 @@
 /**
- * The analytics digest contract, for anything that renders it.
+ * The digest contract, for anything that renders it.
  *
- * Types and registry metadata only — both safe in the browser. The validators
- * are **not** re-exported here on purpose: they are ~370KB of precompiled code
- * and belong on the server, which is the side that reads storage. Importing
- * `./server.ts` from a component would pull all of it into the client bundle,
- * and this barrel's job is to make that a deliberate act rather than an
- * accident.
+ * Types and check-catalogue metadata only — both safe in the browser. The
+ * validators are **not** re-exported here on purpose: they are ~155KB of
+ * precompiled code and belong on the server, which is the side that reads
+ * storage. Importing `./server.ts` from a component would pull all of it into
+ * the client bundle, and this barrel's job is to make that a deliberate act
+ * rather than an accident of autocomplete.
  *
- * Source of truth: `digest-schema/`. Nothing in `src/digest/` is written
- * by hand — `npm run schema:generate` produces it and `npm run schema:check`
- * fails the build when it has drifted.
+ * ## How a digest becomes words on a page
+ *
+ * A stored check is an id and an outcome. Everything a reader sees around it is
+ * resolved here at render time:
+ *
+ *   check id      -> `checkDefinition(id)`  question, section, rule, order
+ *   section id    -> `checkSection(id)`     label and order
+ *   issue type    -> `CLIENT_ISSUE_TYPES`   label, meaning, implication, chart
+ *
+ * That last one is not in this module and should not be: `src/schema/
+ * ClientIssueTypes.ts` already owns it and the client page already uses it. The
+ * digest references built-in issue types by name precisely so the two pages
+ * describe the same issue the same way.
  */
 
 export type {
-  // Shared
-  Capability,
-  CapabilityMap,
-  CapabilityState,
-  Completeness,
-  Coverage,
-  Dimension,
-  EvidenceRef,
-  FindingCategory,
-  FindingCount,
-  Histogram,
-  ImpairmentCategory,
-  ImpairmentExposure,
-  JoinAggregate,
-  MetricAggregate,
-  MetricId,
-  MetricStatus,
-  Provenance,
-  ReadState,
-  ResourceRef,
-  Source,
-  SourceKind,
-  Subject,
-  SubjectKind,
-  TimeRange,
-  // Documents
   CallDigest,
-  PeriodDigest,
-  CohortAggregate,
-  PeriodBucket,
-  RankedCall,
-  // Detail
-  ParticipantDigest,
-  StreamDigest,
-  PathDigest,
-  TimelineRecord,
-  Finding,
-  // Read boundary
-  Manifest,
-  Page,
-  CallSearchRow,
-  CallSearchQuery,
-  ReadResult,
+  ClientDigest,
+  ClientCheck,
+  PeriodSummary,
 } from './types.ts';
 
 export {
-  CAPABILITY_REGISTRY,
-  CONSERVATIVE_V1_POLICY,
-  HISTOGRAM_REGISTRY,
-  METRIC_REGISTRY,
-  REASON_CODES,
-  histogramBucketLabels,
-  histogramDefinition,
-  metricDefinition,
-  reasonLabel,
-  type HistogramDefinition,
-  type MetricDefinition,
+  CHECK_CATALOGUE,
+  CATALOGUE_VERSION,
+  CHECK_BY_ISSUE_TYPE,
+  checkDefinition,
+  checkSection,
+  checkQuestion,
+  checksInSection,
+  orderedSections,
+  type CheckDefinition,
+  type CheckSection,
 } from './registry.ts';
 
-/**
- * Presentation arithmetic the contract explicitly permits the UI to do.
- *
- * Exactly three things: formatting, dividing a numerator by a denominator, and
- * interpreting a histogram bucket. Everything else — deltas, impairment
- * classification, summary merging — is the producer's, and a helper here that
- * did any of it would be the beginning of a second implementation.
- */
-
-import type { ImpairmentExposure, MetricAggregate } from './types.ts';
-import { metricDefinition } from './registry.ts';
+/** The four answers a check can give. Mirrors `common.json#/$defs/outcome`. */
+export type CheckOutcome = 'passed' | 'failed' | 'not-assessable' | 'not-applicable';
 
 /**
- * A metric's value, or null when there is nothing to show.
+ * Display order for outcomes, worst first.
  *
- * Null for an unavailable metric and null for a zero denominator — the contract
- * is explicit that a zero denominator yields an unavailable display value and
- * never a zero rate. "No packets were expected" is not "no packets were lost".
+ * `not-assessable` sorts above `passed` deliberately. A reader scanning a list
+ * needs to see what could not be answered before what was answered well —
+ * ranking it below a pass is how an unassessable call reads as a healthy one.
  */
-export function metricValue(metric: MetricAggregate | undefined): number | null {
-  if (!metric || metric.status === 'unavailable') return null;
-  if (metric.numerator == null) return null;
+export const OUTCOME_ORDER: readonly CheckOutcome[] = [
+  'failed',
+  'not-assessable',
+  'passed',
+  'not-applicable',
+] as const;
 
-  const definition = metricDefinition(metric.metricId);
-  if (definition?.aggregation === 'sum') return metric.numerator;
+export const OUTCOME_LABELS: Readonly<Record<CheckOutcome, string>> = Object.freeze({
+  failed: 'Failed',
+  'not-assessable': 'Not assessable',
+  passed: 'Passed',
+  'not-applicable': 'Not applicable',
+});
 
-  if (metric.denominator == null || metric.denominator === 0) return null;
-  return metric.numerator / metric.denominator;
+/**
+ * The glyph beside each outcome, from the agreed sketch.
+ *
+ * Paired with the label, never alone: colour and a symbol are not a status for
+ * a screen reader, and `?` on its own does not say "we could not tell".
+ */
+export const OUTCOME_SYMBOLS: Readonly<Record<CheckOutcome, string>> = Object.freeze({
+  passed: '✓',
+  failed: '✕',
+  'not-assessable': '?',
+  'not-applicable': '—',
+});
+
+/**
+ * Whether an outcome is a finding a person should act on.
+ *
+ * Only `failed`. Named as a function rather than left to each call site because
+ * "is this a problem" is asked in a dozen places and the one wrong answer —
+ * treating `not-assessable` as fine — must not be reachable by accident.
+ */
+export function isFinding(outcome: CheckOutcome): boolean {
+  return outcome === 'failed';
 }
 
 /**
- * The impaired share of assessed time, or null when nothing was assessed.
+ * Whether an outcome represents evidence at all.
  *
- * The denominator is assessed time, never observed time: dividing by observed
- * time would quietly count unknown time as healthy, which is the single easiest
- * way to make a broken capture look like a good call.
+ * `passed` and `failed` rest on evidence; the other two do not. Use this for
+ * any denominator: a coverage figure that counts unassessable sessions as
+ * assessed is the specific lie this contract is built to prevent.
  */
-export function impairedShare(exposure: ImpairmentExposure | undefined): number | null {
-  if (!exposure || exposure.assessedParticipantMs <= 0) return null;
-  return exposure.impairedParticipantMs / exposure.assessedParticipantMs;
-}
-
-/** How much of the observed time nobody could judge. Null when none was observed. */
-export function unknownShare(exposure: ImpairmentExposure | undefined): number | null {
-  if (!exposure) return null;
-  const observed =
-    exposure.assessedParticipantMs + exposure.unknownParticipantMs;
-  if (observed <= 0) return null;
-  return exposure.unknownParticipantMs / observed;
-}
-
-/**
- * The bucket range a quantile falls in, as an index pair into the weights.
- *
- * Returns a *range*, not a number, because that is all a histogram supports.
- * The contract requires approximate quantiles to be displayed as bucket ranges
- * or clearly labelled approximations, and returning a single interpolated
- * figure here would make it impossible for a caller to honour that.
- */
-export function quantileBucket(weights: readonly number[], quantile: number): number | null {
-  const total = weights.reduce((sum, w) => sum + w, 0);
-  if (total <= 0) return null;
-
-  const target = total * Math.min(Math.max(quantile, 0), 1);
-  let running = 0;
-  for (let i = 0; i < weights.length; i += 1) {
-    running += weights[i] ?? 0;
-    if (running >= target) return i;
-  }
-  return weights.length - 1;
+export function isAssessed(outcome: CheckOutcome): boolean {
+  return outcome === 'passed' || outcome === 'failed';
 }

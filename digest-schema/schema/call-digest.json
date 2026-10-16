@@ -1,126 +1,264 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.observertc.org/digest/v1/call-digest.json",
-  "title": "Call digest, version 1",
-  "description": "One call's identity, coverage, usage, metric aggregates, finding counts and references to paginated detail.\n\nThis is a saved fact, not a view: everything in it was computed by the processor from archived sources, and a reader does no counter arithmetic to render it. The detail refs are the only way into per-participant, per-stream, per-path, timeline and finding data, and each is read against this digest's `revision` — a reader that pins one revision and pages another has spliced two generations together.",
+  "$id": "https://schemas.observertc.org/digest/v2/call-digest.json",
+  "title": "Call digest, version 2",
+  "description": "One completed call's quality checks, at call level and per client session, with the evidence needed to inspect each outcome.\n\nStored at `digests/calls/{callId}.json`. `callId` alone is the key because it is a UUID and therefore globally unique; `roomId` is carried inside because the dashboard's route is /{roomId}/{callId} and a reader holding only a digest must still be able to link back.\n\nThis one file serves both pages. The call page reads `checks` and `coverage`; a client page reads its own entry in `clients`. The roll-up in `checks` is computed from `clients[].checks` in the same pass, so the two cannot disagree — which is the whole reason there is no separate client digest.\n\nWhat is NOT here: no metric warehouse, no histograms, no scores. A check answers a question and points at the evidence; anything a reader wants beyond that is in the raw samples, which stay available.",
   "type": "object",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "required": [
-    "kind",
-    "schemaVersion",
-    "digestId",
-    "tenantId",
-    "callId",
-    "roomId",
-    "revision",
     "provenance",
-    "lifecycle",
-    "range",
+    "call",
     "coverage",
-    "capabilities",
-    "sources",
-    "usage",
-    "joins",
-    "impairments",
-    "metrics",
-    "findingCounts",
-    "participants",
-    "streamDetails",
-    "pathDetails",
-    "timeline",
-    "findings"
+    "checks",
+    "clients"
   ],
   "properties": {
-    "kind": { "const": "call-digest" },
-
-    "schemaVersion": {
-      "description": "Major version. A reader that does not support this exact value must refuse the document rather than read it field by field — a field whose meaning changed would otherwise render as if it had not.",
-      "const": 1
+    "provenance": {
+      "$ref": "common.json#/$defs/provenance"
     },
-
-    "digestId": { "$ref": "common.json#/$defs/opaqueId" },
-    "tenantId": { "$ref": "common.json#/$defs/opaqueId" },
-    "callId": { "$ref": "common.json#/$defs/opaqueId" },
-
-    "roomId": {
-      "description": "Null when the sources never carried one. A room id may be a UUID with no relationship to the call id, so nothing may be inferred from its text.",
-      "oneOf": [{ "$ref": "common.json#/$defs/opaqueId" }, { "type": "null" }]
+    "call": {
+      "$ref": "#/$defs/callIdentity"
     },
-
-    "revision": {
-      "description": "This immutable output generation. Detail pages are valid only against it.",
-      "$ref": "common.json#/$defs/opaqueId"
+    "coverage": {
+      "$ref": "#/$defs/callCoverage"
     },
-
-    "provenance": { "$ref": "common.json#/$defs/provenance" },
-
-    "lifecycle": {
-      "description": "An open call is provisional even when every currently known file was processed: more samples may still arrive. `unknown` means no lifecycle evidence of sufficient authority was found.",
-      "enum": ["open", "closed", "unknown"]
-    },
-
-    "range": {
-      "description": "The known call span — not the archive write time, and not a summary's finalization time. Null when lifecycle evidence cannot establish it. First and last observed samples may bound observed exposure but do not establish authoritative join or leave times.",
-      "oneOf": [{ "$ref": "common.json#/$defs/timeRange" }, { "type": "null" }]
-    },
-
-    "coverage": { "$ref": "common.json#/$defs/coverage" },
-
-    "capabilities": {
-      "description": "Must contain every key the contract requires (see registry/capabilities.v1.json, which both implementations and the conformance suite read). Additional keys are allowed.",
-      "$ref": "common.json#/$defs/capabilityMap"
-    },
-
-    "sources": {
-      "description": "The immutable input inventory this generation was built from. Its hash plus policy identity is `provenance.sourceRevision`, which is what makes a retry deterministic and a late arrival detectable.",
+    "checks": {
+      "title": "Call-level roll-up, one entry per catalogue check",
+      "description": "Counts of how the client sessions answered. Deliberately counts and not a verdict: a call where one of eight clients froze is not simply 'failed', and collapsing it to one word is how a dashboard starts lying.",
       "type": "array",
-      "items": { "$ref": "common.json#/$defs/source" },
-      "maxItems": 4096
+      "items": {
+        "$ref": "#/$defs/callCheck"
+      }
     },
-
-    "usage": {
+    "clients": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/clientDigest"
+      }
+    }
+  },
+  "$defs": {
+    "callIdentity": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "participantSessions",
-        "peakConcurrentParticipants",
-        "observedParticipantMs",
-        "connectedParticipantMs",
-        "callDurationMs"
+        "callId",
+        "roomId",
+        "startedAt",
+        "endedAt",
+        "reportingDay"
       ],
       "properties": {
-        "participantSessions": {
-          "description": "Deduplicated client lifecycle instances. Never unique people, and never a sum of per-SFU counts — the same client seen by two SFUs is one session.",
-          "$ref": "common.json#/$defs/nullableCount"
+        "callId": {
+          "type": "string",
+          "minLength": 1
         },
-        "peakConcurrentParticipants": {
-          "description": "Requires membership intervals. A summary's single-call peak may be used when authoritative for the whole call; peaks from several SFUs may not be summed, because two SFUs peaking at different moments never co-occurred.",
-          "$ref": "common.json#/$defs/nullableCount"
+        "roomId": {
+          "type": "string",
+          "minLength": 1
         },
-        "observedParticipantMs": {
-          "description": "The union of valid observation intervals per client instance, summed across instances. Not participant count multiplied by call duration.",
-          "$ref": "common.json#/$defs/durationMs"
+        "startedAt": {
+          "$ref": "common.json#/$defs/instant"
         },
-        "connectedParticipantMs": {
-          "description": "Requires explicit connection-state evidence. Null when there is none — not a fallback to observed time.",
-          "$ref": "common.json#/$defs/nullableDurationMs"
+        "endedAt": {
+          "$ref": "common.json#/$defs/instant"
         },
-        "callDurationMs": { "$ref": "common.json#/$defs/nullableDurationMs" }
+        "reportingDay": {
+          "$ref": "common.json#/$defs/reportingDay"
+        },
+        "sfuIds": {
+          "description": "Every SFU that served the call, from the router reports. Context only — a multi-SFU call is still one call.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-
-    "joins": { "$ref": "common.json#/$defs/joinAggregate" },
-
-    "impairments": { "$ref": "common.json#/$defs/impairmentExposures" },
-
-    "metrics": { "$ref": "common.json#/$defs/metricAggregates" },
-
-    "findingCounts": { "$ref": "common.json#/$defs/findingCounts" },
-
-    "participants": { "$ref": "common.json#/$defs/nullableResourceRef" },
-    "streamDetails": { "$ref": "common.json#/$defs/nullableResourceRef" },
-    "pathDetails": { "$ref": "common.json#/$defs/nullableResourceRef" },
-    "timeline": { "$ref": "common.json#/$defs/nullableResourceRef" },
-    "findings": { "$ref": "common.json#/$defs/nullableResourceRef" }
+    "callCoverage": {
+      "title": "Call-level coverage",
+      "description": "Spelled out in full rather than composed from common.json#/$defs/coverage with allOf. That composition is the obvious move and it does not work: the shared definition seals itself with additionalProperties:false, so every call-level field added beside it is rejected by the inner schema. Listing the three second-fields twice is the cheaper mistake, and a test pins them against the client-level ones.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observedSeconds",
+        "assessedSeconds",
+        "unassessedSeconds",
+        "clientsObserved",
+        "clientsAssessed",
+        "callSummaryPresent"
+      ],
+      "properties": {
+        "observedSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "assessedSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unassessedSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "$ref": "common.json#/$defs/gap"
+          }
+        },
+        "clientsObserved": {
+          "description": "Client sessions with at least one sample.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "clientsAssessed": {
+          "description": "Of those, the ones where at least one check reached passed or failed. The gap between this and clientsObserved is the honest unknown.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "callSummaryPresent": {
+          "description": "Whether call-summary.json was readable. Without it the call's bounds and display names are inferred from samples, which is weaker.",
+          "type": "boolean"
+        },
+        "limitations": {
+          "description": "Plain sentences naming what could not be assessed and why. Shown verbatim; the one place prose is stored, because a limitation is specific to one call and cannot be resolved from a registry.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "callCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "counts"
+      ],
+      "properties": {
+        "id": {
+          "description": "A key of the shipped check catalogue. The question text, section and order are resolved from there, not stored here.",
+          "type": "string",
+          "minLength": 1
+        },
+        "counts": {
+          "$ref": "common.json#/$defs/outcomeCounts"
+        },
+        "failedSeconds": {
+          "description": "Assessed client-seconds inside a failing interval. Client duration, not call duration and not stream duration — the three differ and conflating them is how an 8-client call reports more impaired time than it lasted. Absent when the rule has no interval.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "clientDigest": {
+      "title": "One client session's checks",
+      "description": "`clientId` is unique within this call only. The addressable identity of this session is the call's `roomId` and `callId` plus this `clientId`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientId",
+        "coverage",
+        "checks"
+      ],
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "coverage": {
+          "$ref": "common.json#/$defs/coverage"
+        },
+        "classification": {
+          "$ref": "#/$defs/classification"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clientCheck"
+          }
+        }
+      }
+    },
+    "classification": {
+      "title": "What this client session's evidence amounts to",
+      "description": "Disjoint by construction, and ordered: a session showing a user-experience symptom is `qoe-symptom` even if it also had a transport condition, because the symptom is the thing that happened to the person.\n\n`qos-only` is a transport or connectivity condition with no symptom evidence — worth surfacing, and NOT a claim that anyone noticed. `no-issue-within-coverage` is exactly that and not 'healthy': it is bounded by what could be assessed. `insufficient-evidence` is a session that could not be classified at all.",
+      "enum": [
+        "qoe-symptom",
+        "qos-only",
+        "no-issue-within-coverage",
+        "insufficient-evidence"
+      ]
+    },
+    "clientCheck": {
+      "title": "One question, answered for one client session",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "outcome"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "$ref": "common.json#/$defs/outcome"
+        },
+        "subject": {
+          "$ref": "common.json#/$defs/subject"
+        },
+        "rule": {
+          "description": "The rule as applied, in one line, with the threshold that was used. Stored per outcome rather than resolved from the catalogue because a rule can be parameterised and the reader needs the value that actually decided this answer.",
+          "type": "string",
+          "maxLength": 300
+        },
+        "why": {
+          "description": "Required reading for `not-assessable`: what evidence was missing. 'no remote-inbound RTP report in 1309s of samples' is useful; 'unavailable' is not.",
+          "type": "string",
+          "maxLength": 300
+        },
+        "observed": {
+          "type": "array",
+          "items": {
+            "$ref": "common.json#/$defs/observedValue"
+          }
+        },
+        "interval": {
+          "description": "When the fault was observed. Absent on a pass, and absent where the rule is not interval-bounded.",
+          "$ref": "common.json#/$defs/interval"
+        },
+        "issues": {
+          "description": "Built-in issues that evidence this outcome. A failing check normally has at least one; a check with issues but no statistic is still `not-assessable`, because a detector firing is a report, not a measurement.",
+          "type": "array",
+          "items": {
+            "$ref": "common.json#/$defs/issueRef"
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "common.json#/$defs/eventRef"
+          }
+        },
+        "evidence": {
+          "description": "Where to look. Ordered most-specific first, so the UI's primary link is evidence[0].",
+          "type": "array",
+          "items": {
+            "$ref": "common.json#/$defs/evidenceRef"
+          }
+        }
+      }
+    }
   }
 }

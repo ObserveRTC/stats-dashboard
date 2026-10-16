@@ -5,745 +5,527 @@
  * Source: digest-schema/registry/*.json
  * Regenerate: npm run schema:generate
  *
- * Safe in the browser: this is metadata, not validation code. The UI needs a
- * metric's unit to format it, its numerator and denominator to explain it, and
- * a histogram's bounds to read a bucket — none of which it may invent.
+ * Safe in the browser: metadata, not validation code. This is the half of the
+ * contract the UI needs in order to render a digest at all — a digest stores a
+ * check's `id` and its outcome, and every word around it comes from here.
+ *
+ * The same reasoning as CLIENT_ISSUE_TYPES, applied one level up. An issue's
+ * label, meaning and chart live in that registry; a check's question, section
+ * and rule live in this one. Storage holds neither, so there is exactly one
+ * place each sentence is written and no way for two copies to drift.
  */
 
-export const METRIC_REGISTRY = {
-  "registryVersion": "metrics-v1",
-  "histogramRegistry": "histograms-v1",
-  "description": "The initial metric registry. A metric's identity is its id, and its subject, direction, media and units are fixed here — the same id under a different subject never implies the same exposure, so aggregation combines identical ids at the same scope and nothing else.\n\nEvery duration in a stream- or transport-scoped metric is stream-time or transport-time. It is NOT participant-time and must be labelled accordingly: four streams measured for a minute are four stream-minutes and one participant-minute. Mixing them is how a dashboard reports more impaired time than the call lasted.\n\nCounters are differenced once, at stream or transport scope, before any aggregation. Differencing after aggregating sums unrelated counter runs; differencing twice turns a delta into noise.\n\n`min` and `max` retain the extrema of valid *interval values*, never of cumulative counters — the maximum of a monotonically increasing counter is just its last reading.",
-  "conflictsWithContractProse": [
+export const CHECK_CATALOGUE = {
+  "catalogueVersion": "checks-2026.10",
+  "description": "The questions a digest answers. Shipped to the browser, so the UI resolves a check's wording, section and order from here and a digest stores only an id and an outcome. Every one of the 37 built-in issue types in src/schema/ClientIssueTypes.ts is claimed by exactly one check: an issue with no home would fire and never be surfaced, which is the failure this allocation exists to prevent.",
+  "sections": [
     {
-      "about": "aggregation of jitterBufferDelay, decodeTime and encodeTime",
-      "contractSays": "The prose states 'All delay and FPS metrics use duration-weighted-mean', but the per-metric rows for audio.inbound.jitterBufferDelay, video.inbound.decodeTime and video.outbound.encodeTime each specify a per-count denominator (emitted samples, decoded frames, encoded frames) and the jitterBufferDelay row says 'Ratio of sums' explicitly.",
-      "resolvedAs": "ratio-of-sums, following the per-metric rows.",
-      "why": "These three are cost-per-unit-of-work, not a level held over time. Weighting them by duration would divide a per-frame cost by milliseconds and produce a number with no meaning. The per-metric rows are specific and self-consistent; the blanket sentence is a generalisation that does not hold for them.",
-      "status": "needs an explicit contract amendment — the prose and the table disagree and both implementations must not resolve it independently."
+      "id": "received-video",
+      "label": "Received video",
+      "order": 1
+    },
+    {
+      "id": "received-audio",
+      "label": "Received audio",
+      "order": 2
+    },
+    {
+      "id": "capture-sending",
+      "label": "Capture and sending",
+      "order": 3
+    },
+    {
+      "id": "transport-continuity",
+      "label": "Transport and continuity",
+      "order": 4
+    },
+    {
+      "id": "data-confidence",
+      "label": "Data confidence",
+      "order": 5
     }
   ],
-  "metrics": [
+  "checks": [
     {
-      "metricId": "audio.inbound.loss",
-      "label": "Inbound audio packet loss",
-      "subject": "stream",
+      "id": "video.receive.freeze",
+      "section": "received-video",
+      "order": 1,
+      "question": "Was received video free of recorded freezes?",
+      "subjectKind": "inbound-track",
+      "media": "video",
+      "rule": "Fails when freezeCount increases on an inbound video track, or when a track that was receiving stops entirely.",
+      "statistics": [
+        "freezeCount",
+        "totalFreezesDuration",
+        "framesReceived"
+      ],
+      "issueTypes": [
+        "video-flow-disrupted",
+        "dry-inbound-track"
+      ],
+      "notApplicableWhen": "The client session received no video track.",
+      "notAssessableWhen": "freezeCount is absent from the platform's stats, or the counter reset inside the only interval available."
+    },
+    {
+      "id": "video.receive.decode",
+      "section": "received-video",
+      "order": 2,
+      "question": "Could the decoder keep up?",
+      "subjectKind": "inbound-track",
+      "media": "video",
+      "rule": "Fails when decode time per frame stays above the frame interval, or when the decoder stops advancing while frames arrive.",
+      "statistics": [
+        "totalDecodeTime",
+        "framesDecoded",
+        "framesReceived"
+      ],
+      "issueTypes": [
+        "decoder-bottleneck",
+        "video-decoder-overloaded",
+        "stuck-decoder"
+      ],
+      "notApplicableWhen": "The client session received no video track.",
+      "notAssessableWhen": "totalDecodeTime or framesDecoded is absent, which is common on platforms that do not expose decoder timing."
+    },
+    {
+      "id": "video.receive.assembly",
+      "section": "received-video",
+      "order": 3,
+      "question": "Did frame assembly or video recovery stall?",
+      "subjectKind": "inbound-track",
+      "media": "video",
+      "rule": "Fails when frames arrive but do not complete, or when keyframe recovery was requested repeatedly without a decoded keyframe following.",
+      "statistics": [
+        "framesReceived",
+        "framesDecoded",
+        "pliCount",
+        "keyFramesDecoded"
+      ],
+      "issueTypes": [
+        "frame-assembly-stalled",
+        "video-recovery-failed"
+      ],
+      "notApplicableWhen": "The client session received no video track.",
+      "notAssessableWhen": "pliCount or keyFramesDecoded is absent."
+    },
+    {
+      "id": "video.receive.playout",
+      "section": "received-video",
+      "order": 4,
+      "question": "Did video frames miss decode or display deadlines?",
+      "subjectKind": "inbound-track",
+      "media": "video",
+      "rule": "Fails when decoded frames are dropped rather than rendered, beyond the tolerance the rule states.",
+      "statistics": [
+        "framesDropped",
+        "framesRendered",
+        "framesDecoded"
+      ],
+      "issueTypes": [
+        "inbound-video-playout-discrepancy"
+      ],
+      "notApplicableWhen": "The client session received no video track.",
+      "notAssessableWhen": "framesRendered is absent, which is the usual case outside Chromium."
+    },
+    {
+      "id": "video.receive.compression",
+      "section": "received-video",
+      "order": 5,
+      "question": "Was the picture free of sustained compression degradation?",
+      "subjectKind": "inbound-track",
+      "media": "video",
+      "rule": "Fails when bits per pixel stays below the threshold for a sustained stretch — a picture being delivered, but coarsely.",
+      "statistics": [
+        "bytesReceived",
+        "frameWidth",
+        "frameHeight",
+        "framesDecoded"
+      ],
+      "issueTypes": [
+        "pixelated-video"
+      ],
+      "notApplicableWhen": "The client session received no video track.",
+      "notAssessableWhen": "Frame dimensions are absent, so bits per pixel cannot be formed."
+    },
+    {
+      "id": "audio.receive.concealment",
+      "section": "received-audio",
+      "order": 1,
+      "question": "Was received audio free of sustained concealment?",
+      "subjectKind": "inbound-track",
       "media": "audio",
-      "direction": "inbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of lost-packet deltas over valid intervals",
-      "denominator": "sum of (lost + received) packet deltas over valid intervals",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "An all-loss interval is permitted and is real evidence, not a divide-by-zero to discard. A zero denominator — no packets expected at all — yields an unavailable value, never a zero loss rate."
+      "rule": "Fails when the concealed share of received samples stays above the threshold — audio the decoder invented because nothing arrived.",
+      "statistics": [
+        "concealedSamples",
+        "totalSamplesReceived",
+        "silentConcealedSamples"
+      ],
+      "issueTypes": [
+        "synthesized-audio"
+      ],
+      "notApplicableWhen": "The client session received no audio track.",
+      "notAssessableWhen": "concealedSamples is absent, or totalSamplesReceived reset leaving no usable interval."
     },
     {
-      "metricId": "video.inbound.loss",
-      "label": "Inbound video packet loss",
-      "subject": "stream",
-      "media": "video",
-      "direction": "inbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of lost-packet deltas over valid intervals",
-      "denominator": "sum of (lost + received) packet deltas over valid intervals",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "See audio.inbound.loss."
-    },
-    {
-      "metricId": "audio.outbound.remoteLoss",
-      "label": "Outbound audio loss reported by the receiver",
-      "subject": "stream",
+      "id": "audio.receive.synthesized",
+      "section": "received-audio",
+      "order": 2,
+      "question": "Was synthesized playout excessive?",
+      "subjectKind": "inbound-track",
       "media": "audio",
-      "direction": "outbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of receiver-reported lost-packet deltas from fresh remote reports",
-      "denominator": "sum of receiver-reported expected-packet deltas from the same reports",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "Only fresh remote reports with supported counter evidence. The denominator must come from the receiver's own report — manufacturing it from the sender's packetsSent would divide one endpoint's count by another's and silently misreport loss whenever the two disagree. A remote report whose timestamp has not advanced is stale and contributes nothing; it is never carried into later intervals."
+      "rule": "Fails when the jitter buffer stretched or invented playout beyond the threshold, as reported by the built-in detector and corroborated by the sample counters.",
+      "statistics": [
+        "insertedSamplesForDeceleration",
+        "removedSamplesForAcceleration",
+        "totalSamplesReceived"
+      ],
+      "issueTypes": [
+        "invented-speech"
+      ],
+      "eventTypes": [
+        "EXCESSIVE_SYNTHESIZED_AUDIO"
+      ],
+      "notApplicableWhen": "The client session received no audio track.",
+      "notAssessableWhen": "The inserted/removed sample counters are absent."
     },
     {
-      "metricId": "video.outbound.remoteLoss",
-      "label": "Outbound video loss reported by the receiver",
-      "subject": "stream",
-      "media": "video",
-      "direction": "outbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of receiver-reported lost-packet deltas from fresh remote reports",
-      "denominator": "sum of receiver-reported expected-packet deltas from the same reports",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "See audio.outbound.remoteLoss."
-    },
-    {
-      "metricId": "audio.inbound.jitter",
-      "label": "Inbound audio jitter",
-      "subject": "stream",
+      "id": "audio.receive.jitterBuffer",
+      "section": "received-audio",
+      "order": 3,
+      "question": "Did the jitter buffer avoid sustained stress?",
+      "subjectKind": "inbound-track",
       "media": "audio",
-      "direction": "inbound",
-      "unit": "ms",
-      "aggregation": "duration-weighted-mean",
-      "numerator": "sum of (jitter ms x supported interval duration ms)",
-      "denominator": "sum of supported interval duration ms",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time",
-      "notes": "A level held over an interval, so weighted by how long it was held. Fresh observations only."
+      "rule": "Fails when mean jitter buffer delay stays above the threshold. Delay is a ratio of sums over the interval, never a mean of per-sample delays.",
+      "statistics": [
+        "jitterBufferDelay",
+        "jitterBufferEmittedCount"
+      ],
+      "issueTypes": [
+        "audio-jitter-buffer-stress"
+      ],
+      "notApplicableWhen": "The client session received no audio track.",
+      "notAssessableWhen": "jitterBufferEmittedCount is absent or did not advance."
     },
     {
-      "metricId": "video.inbound.jitter",
-      "label": "Inbound video jitter",
-      "subject": "stream",
+      "id": "audio.receive.sync",
+      "section": "received-audio",
+      "order": 4,
+      "question": "Did audio and video stay in sync?",
+      "subjectKind": "inbound-track",
+      "rule": "Fails when the built-in detector reports a sustained audio/video presentation offset for the same remote participant.",
+      "statistics": [
+        "jitterBufferDelay",
+        "jitterBufferEmittedCount"
+      ],
+      "issueTypes": [
+        "av-desync"
+      ],
+      "notApplicableWhen": "The client session received only one media kind, so there is nothing to be out of sync with.",
+      "notAssessableWhen": "Playout timing is not exposed for both tracks."
+    },
+    {
+      "id": "send.capture.keepUp",
+      "section": "capture-sending",
+      "order": 1,
+      "question": "Did capture keep up with intended output?",
+      "subjectKind": "outbound-track",
       "media": "video",
-      "direction": "inbound",
-      "unit": "ms",
-      "aggregation": "duration-weighted-mean",
-      "numerator": "sum of (jitter ms x supported interval duration ms)",
-      "denominator": "sum of supported interval duration ms",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time"
+      "rule": "Fails when the media source delivered fewer frames than the track's intended rate for a sustained stretch.",
+      "statistics": [
+        "framesPerSecond",
+        "framesCaptured",
+        "framesSent"
+      ],
+      "issueTypes": [
+        "video-capture-bottleneck"
+      ],
+      "notApplicableWhen": "The client session sent no video track.",
+      "notAssessableWhen": "The media source's frame rate is absent."
     },
     {
-      "metricId": "transport.iceRtt",
-      "label": "ICE round-trip time on the selected path",
-      "subject": "transport",
-      "media": null,
-      "direction": null,
-      "unit": "ms",
-      "aggregation": "duration-weighted-mean",
-      "numerator": "sum of (ICE RTT ms x supported interval duration ms)",
-      "denominator": "sum of supported interval duration ms",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "transport-time",
-      "notes": "Selected candidate pair only. Non-selected pairs are measured against paths no media took. Never pooled with RTCP RTT: they measure different paths by different mechanisms, and a chart that mixes them cannot be read."
+      "id": "send.encode.keepUp",
+      "section": "capture-sending",
+      "order": 2,
+      "question": "Did encoding keep up with capture?",
+      "subjectKind": "outbound-track",
+      "media": "video",
+      "rule": "Fails when encode time per frame stays above the frame interval, or when captured frames are not reaching the encoder.",
+      "statistics": [
+        "totalEncodeTime",
+        "framesEncoded",
+        "framesSent"
+      ],
+      "issueTypes": [
+        "encoder-bottleneck"
+      ],
+      "notApplicableWhen": "The client session sent no video track.",
+      "notAssessableWhen": "totalEncodeTime is absent."
     },
     {
-      "metricId": "audio.outbound.rtcpRtt",
-      "label": "Audio RTCP round-trip time",
-      "subject": "stream",
+      "id": "send.source.audio",
+      "section": "capture-sending",
+      "order": 3,
+      "question": "Was the intended microphone producing audio?",
+      "subjectKind": "outbound-track",
       "media": "audio",
-      "direction": "outbound",
-      "unit": "ms",
-      "aggregation": "duration-weighted-mean",
-      "numerator": "sum of (RTCP RTT ms x supported interval duration ms)",
-      "denominator": "sum of supported interval duration ms",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time",
-      "notes": "Fresh RTCP evidence only. Kept separate from transport.iceRtt by design — see that metric's note."
+      "rule": "Fails when the audio media source reports no energy while the track is unmuted and expected to be live, or when the capture source was lost.",
+      "statistics": [
+        "audioLevel",
+        "totalAudioEnergy"
+      ],
+      "issueTypes": [
+        "silent-audio-source",
+        "capture-source-lost"
+      ],
+      "eventTypes": [
+        "CAPTURE_SOURCE_LOST",
+        "CAPTURE_TRACK_MUTED",
+        "MEDIA_TRACK_MUTED"
+      ],
+      "notApplicableWhen": "The client session sent no audio track, or the track was muted throughout — a muted microphone is silent on purpose.",
+      "notAssessableWhen": "The media source's audioLevel is absent."
     },
     {
-      "metricId": "video.outbound.rtcpRtt",
-      "label": "Video RTCP round-trip time",
-      "subject": "stream",
-      "media": "video",
-      "direction": "outbound",
-      "unit": "ms",
-      "aggregation": "duration-weighted-mean",
-      "numerator": "sum of (RTCP RTT ms x supported interval duration ms)",
-      "denominator": "sum of supported interval duration ms",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time"
+      "id": "send.flow",
+      "section": "capture-sending",
+      "order": 4,
+      "question": "Did the sender maintain expected media output?",
+      "subjectKind": "outbound-track",
+      "rule": "Fails when an unmuted outbound track stopped producing packets, or the sender stalled while media was expected.",
+      "statistics": [
+        "bytesSent",
+        "packetsSent"
+      ],
+      "issueTypes": [
+        "dry-outbound-track",
+        "rtp-sender-stalled"
+      ],
+      "notApplicableWhen": "The client session sent no media.",
+      "notAssessableWhen": "Outbound counters reset with no usable interval either side."
     },
     {
-      "metricId": "audio.inbound.bitrate",
-      "label": "Inbound audio bitrate",
-      "subject": "stream",
-      "media": "audio",
-      "direction": "inbound",
-      "unit": "bps",
-      "aggregation": "ratio-of-sums",
-      "numerator": "8000 x sum of RTP byte deltas",
-      "denominator": "sum of interval duration ms",
-      "histogram": "bitrate-bps-v1",
-      "timeBasis": "stream-time",
-      "notes": "Per stream or encoding. A rollup is the mean over stream-time and is NOT total call bandwidth: summing per-stream bitrates counts the same media once per subscriber, and simulcast encodings are alternatives rather than layers to add."
+      "id": "send.endpoint.qualityLimitation",
+      "section": "capture-sending",
+      "order": 5,
+      "question": "Did the encoder report a quality limitation?",
+      "subjectKind": "client",
+      "rule": "Fails when the outbound track reports a sustained qualityLimitationReason. This is the ENCODER'S OWN reason code — reported as `cpu`, `bandwidth` or `other` — and it is not host CPU utilisation. No browser API exposes process CPU; a page that labels this 'CPU usage' is asserting something the data cannot support.",
+      "statistics": [
+        "qualityLimitationReason",
+        "qualityLimitationDurations"
+      ],
+      "issueTypes": [
+        "cpulimitation"
+      ],
+      "notApplicableWhen": "The client session sent no media.",
+      "notAssessableWhen": "qualityLimitationReason is absent, which is the case outside Chromium."
     },
     {
-      "metricId": "video.inbound.bitrate",
-      "label": "Inbound video bitrate",
-      "subject": "stream",
-      "media": "video",
-      "direction": "inbound",
-      "unit": "bps",
-      "aggregation": "ratio-of-sums",
-      "numerator": "8000 x sum of RTP byte deltas",
-      "denominator": "sum of interval duration ms",
-      "histogram": "bitrate-bps-v1",
-      "timeBasis": "stream-time",
-      "notes": "See audio.inbound.bitrate."
+      "id": "transport.rtt",
+      "section": "transport-continuity",
+      "order": 1,
+      "question": "Did all fresh RTCP RTT observations stay below 300 ms?",
+      "subjectKind": "peer-connection",
+      "rule": "Fails when a fresh round-trip observation exceeds the threshold. Only fresh reports count: one stale remote report must not be counted once per local sample, which would turn a single bad reading into a sustained fault.",
+      "statistics": [
+        "currentRoundTripTime",
+        "roundTripTime",
+        "roundTripTimeMeasurements",
+        "timestamp"
+      ],
+      "issueTypes": [
+        "transport-delay-degraded"
+      ],
+      "notApplicableWhen": "No peer connection reached a connected state, so there was never a path to measure.",
+      "notAssessableWhen": "No candidate-pair or remote-inbound report carried a round-trip time."
     },
     {
-      "metricId": "audio.outbound.bitrate",
-      "label": "Outbound audio bitrate",
-      "subject": "stream",
-      "media": "audio",
-      "direction": "outbound",
-      "unit": "bps",
-      "aggregation": "ratio-of-sums",
-      "numerator": "8000 x sum of RTP byte deltas",
-      "denominator": "sum of interval duration ms",
-      "histogram": "bitrate-bps-v1",
-      "timeBasis": "stream-time"
+      "id": "transport.inboundLoss",
+      "section": "transport-continuity",
+      "order": 2,
+      "question": "Did measured inbound interval loss stay below 5%?",
+      "subjectKind": "peer-connection",
+      "rule": "Fails when lost over (lost + received) exceeds the threshold for an interval. A ratio of sums per interval, not a mean of interval ratios: a 2% interval carrying ten packets and a 0% interval carrying ten thousand are not equal evidence.",
+      "statistics": [
+        "packetsLost",
+        "packetsReceived"
+      ],
+      "issueTypes": [
+        "transport-loss-sustained"
+      ],
+      "notApplicableWhen": "The client session received no RTP.",
+      "notAssessableWhen": "packetsLost is absent, or both counters reset leaving no usable interval."
     },
     {
-      "metricId": "video.outbound.bitrate",
-      "label": "Outbound video bitrate",
-      "subject": "stream",
-      "media": "video",
-      "direction": "outbound",
-      "unit": "bps",
-      "aggregation": "ratio-of-sums",
-      "numerator": "8000 x sum of RTP byte deltas",
-      "denominator": "sum of interval duration ms",
-      "histogram": "bitrate-bps-v1",
-      "timeBasis": "stream-time"
+      "id": "transport.outboundLossRatio",
+      "section": "transport-continuity",
+      "order": 3,
+      "question": "Can outbound loss be reconstructed as a packet ratio?",
+      "subjectKind": "peer-connection",
+      "rule": "An availability check, and it frequently answers not-assessable — which is the point. Outbound loss is only knowable from a remote-inbound report, and when none arrives the honest answer is that we cannot tell. Reporting 0% instead would be a claim nobody measured.",
+      "statistics": [
+        "fractionLost",
+        "packetsSent",
+        "packetsLost"
+      ],
+      "notApplicableWhen": "The client session sent no RTP.",
+      "notAssessableWhen": "No fresh remote-inbound RTP report arrived during the session."
     },
     {
-      "metricId": "audio.inbound.speechConcealment",
-      "label": "Inbound audio speech concealment",
-      "subject": "stream",
-      "media": "audio",
-      "direction": "inbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of max(0, concealedSamples delta - silentConcealedSamples delta)",
-      "denominator": "sum of receivedSamples deltas",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "Both counters must exist. A missing silentConcealedSamples is NOT assumed zero — silence concealment is not audible damage, and treating its absence as zero inflates concealment on every platform that does not report it. Without it the metric is unavailable. The max(0, ...) guards a reported silent delta exceeding the concealed delta rather than producing negative damage."
+      "id": "transport.congestion",
+      "section": "transport-continuity",
+      "order": 4,
+      "question": "Was media delivery free of congestion findings?",
+      "subjectKind": "peer-connection",
+      "rule": "Fails when a built-in congestion detector reports sustained congestion in either direction, corroborated by available bitrate and loss movement.",
+      "statistics": [
+        "availableOutgoingBitrate",
+        "availableIncomingBitrate",
+        "bytesSent",
+        "bytesReceived"
+      ],
+      "issueTypes": [
+        "uplink-congestion",
+        "downlink-congestion",
+        "congestion"
+      ],
+      "notApplicableWhen": "No peer connection carried media.",
+      "notAssessableWhen": "No available-bitrate estimate was reported, so a congestion report cannot be corroborated."
     },
     {
-      "metricId": "audio.inbound.jitterBufferDelay",
-      "label": "Inbound audio jitter buffer delay per emitted sample",
-      "subject": "stream",
-      "media": "audio",
-      "direction": "inbound",
-      "unit": "ms",
-      "aggregation": "ratio-of-sums",
-      "numerator": "1000 x sum of jitterBufferDelay deltas in seconds",
-      "denominator": "sum of jitterBufferEmittedCount deltas",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time",
-      "notes": "Cost per emitted sample, not a level held over time — see conflictsWithContractProse. Dividing by duration instead of by emitted count would yield a quantity with no interpretation."
+      "id": "transport.continuity",
+      "section": "transport-continuity",
+      "order": 5,
+      "question": "Did connections remain established without interruption?",
+      "subjectKind": "peer-connection",
+      "rule": "Fails on any interruption to an established path, or any failure to establish one: disconnection, failure, stall, DTLS failure, demux stall, a blocked direction, no viable candidate, or a path that kept changing.",
+      "statistics": [
+        "state",
+        "bytesSent",
+        "bytesReceived",
+        "requestsSent",
+        "responsesReceived"
+      ],
+      "issueTypes": [
+        "ice-disconnected",
+        "ice-connection-failed",
+        "ice-establishment-failed",
+        "ice-transport-stalled",
+        "dtls-handshake-failed",
+        "dtls-handshake-stalled",
+        "no-available-ice-candidate",
+        "unstable-ice-path",
+        "transport-demux-stalled",
+        "blocked-inbound-media-transport",
+        "blocked-outbound-media-transport",
+        "blocked-stun-requests"
+      ],
+      "eventTypes": [
+        "ICE_CONNECTION_STATE_CHANGED",
+        "PEER_CONNECTION_STATE_CHANGED",
+        "ICE_RESTART",
+        "ICE_RESTART_RECOMMENDED",
+        "LONG_PC_CONNECTION_ESTABLISHMENT",
+        "PEER_CONNECTION_ICE_PATH_CHANGED"
+      ],
+      "notApplicableWhen": "The client session opened no peer connection.",
+      "notAssessableWhen": "No connection state history is available for the session."
     },
     {
-      "metricId": "video.inbound.freezeShare",
-      "label": "Inbound video freeze share",
-      "subject": "stream",
-      "media": "video",
-      "direction": "inbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of freezeDuration deltas in ms",
-      "denominator": "sum of eligible measured video stream ms",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "The browser's own freeze definition, not a reconstruction from event timing. This is stream-time freeze: a nonzero delta says there was freeze inside the sampling interval, NOT that the interval was impaired throughout, and it does not establish exact freeze boundaries. Converting it into participant impairment duration requires temporal evidence the policy does not have by default."
+      "id": "confidence.clientTime",
+      "section": "data-confidence",
+      "order": 1,
+      "question": "Was all relevant client time assessable?",
+      "subjectKind": "client",
+      "rule": "Fails when assessed time is materially short of observed time: a stats collection gap, a hidden tab, or sampling that stopped before the client left. Not a quality fault — a statement about how much of the session the other checks could speak for.",
+      "statistics": [
+        "timestamp"
+      ],
+      "eventTypes": [
+        "STATS_COLLECTION_GAP",
+        "TAB_VISIBILITY_CHANGED",
+        "CLIENT_JOINED",
+        "CLIENT_LEFT"
+      ],
+      "notAssessableWhen": "Fewer than two samples arrived, so no interval exists to measure."
     },
     {
-      "metricId": "video.inbound.decodeTime",
-      "label": "Decode cost per frame",
-      "subject": "stream",
-      "media": "video",
-      "direction": "inbound",
-      "unit": "ms",
-      "aggregation": "ratio-of-sums",
-      "numerator": "1000 x sum of totalDecodeTime deltas in seconds",
-      "denominator": "sum of framesDecoded deltas",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time",
-      "notes": "Cost per decoded frame — see conflictsWithContractProse. Decoder cost, not host CPU utilisation."
-    },
-    {
-      "metricId": "video.outbound.encodeTime",
-      "label": "Encode cost per frame",
-      "subject": "stream",
-      "media": "video",
-      "direction": "outbound",
-      "unit": "ms",
-      "aggregation": "ratio-of-sums",
-      "numerator": "1000 x sum of totalEncodeTime deltas in seconds",
-      "denominator": "sum of framesEncoded deltas",
-      "histogram": "delay-ms-v1",
-      "timeBasis": "stream-time",
-      "notes": "Cost per encoded frame — see conflictsWithContractProse. Encoder cost, not host CPU utilisation."
-    },
-    {
-      "metricId": "video.outbound.cpuLimitedShare",
-      "label": "Share of limited time attributed to CPU",
-      "subject": "stream",
-      "media": "video",
-      "direction": "outbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of CPU qualityLimitationDuration deltas in ms",
-      "denominator": "sum of all qualityLimitationDuration deltas in ms",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "The denominator is limited time, not stream time: this answers 'when the encoder was limited, how often was CPU the reason', not 'what fraction of the call was CPU-bound'. Measured encoder limitation as the browser reports it — never host CPU usage, which these digests cannot see."
-    },
-    {
-      "metricId": "video.outbound.bandwidthLimitedShare",
-      "label": "Share of limited time attributed to bandwidth",
-      "subject": "stream",
-      "media": "video",
-      "direction": "outbound",
-      "unit": "ratio",
-      "aggregation": "ratio-of-sums",
-      "numerator": "sum of bandwidth qualityLimitationDuration deltas in ms",
-      "denominator": "sum of all qualityLimitationDuration deltas in ms",
-      "histogram": "ratio-v1",
-      "timeBasis": "stream-time",
-      "notes": "See video.outbound.cpuLimitedShare."
-    },
-    {
-      "metricId": "video.inbound.fps",
-      "label": "Inbound video frames per second",
-      "subject": "stream",
-      "media": "video",
-      "direction": "inbound",
-      "unit": "fps",
-      "aggregation": "duration-weighted-mean",
-      "numerator": "sum of (FPS x supported interval duration ms)",
-      "denominator": "sum of supported interval duration ms",
-      "histogram": "fps-v1",
-      "timeBasis": "stream-time",
-      "notes": "The browser's fresh FPS reading. Frame geometry — resolution and its changes — is timeline state, not a metric: a resolution is not a quantity to average."
-    },
-    {
-      "metricId": "transport.rtpBytesSent",
-      "label": "RTP bytes sent",
-      "subject": "transport",
-      "media": null,
-      "direction": "outbound",
-      "unit": "bytes",
-      "aggregation": "sum",
-      "numerator": "sum of unique RTP byte deltas for this direction",
-      "denominator": null,
-      "histogram": null,
-      "timeBasis": "transport-time",
-      "notes": "Named under `transport` for scope, but derived from the RTP stat families once per direction. The transport's own byte counters are NOT added on top — they cover the same bytes, and adding both double-counts every packet. These are not billable bytes: no header overhead model, no TURN relay amplification, no retransmission accounting beyond what the RTP counters already include."
-    },
-    {
-      "metricId": "transport.rtpBytesReceived",
-      "label": "RTP bytes received",
-      "subject": "transport",
-      "media": null,
-      "direction": "inbound",
-      "unit": "bytes",
-      "aggregation": "sum",
-      "numerator": "sum of unique RTP byte deltas for this direction",
-      "denominator": null,
-      "histogram": null,
-      "timeBasis": "transport-time",
-      "notes": "See transport.rtpBytesSent."
+      "id": "confidence.assessment",
+      "section": "data-confidence",
+      "order": 2,
+      "question": "Is the full call and detector assessment available?",
+      "subjectKind": "client",
+      "rule": "Fails when a source the other checks depend on is missing: no call summary, a client session with no samples, or a monitor version whose built-in detector set differs from the one these rules were written against.",
+      "statistics": [],
+      "notAssessableWhen": "The monitor version could not be read from client metadata."
     }
   ]
 } as const;
 
-export const HISTOGRAM_REGISTRY = {
-  "registryVersion": "histograms-v1",
-  "description": "Immutable histogram definitions. Bounds are display and aggregation choices, NOT quality thresholds — nothing here says 50 ms is good or 0.05 loss is bad. They apply to valid interval values, never to lifetime averages, and are weighted by eligible duration in milliseconds so a long quiet interval counts for more than a short one.\n\nBuckets are (-inf, b0], (b0, b1], ..., (bn, +inf), so weights.length === upperBounds.length + 1. Only identical definitionIds may be merged; two histograms with different bounds have no common refinement and combining them would invent data. Quantiles read off these are approximate bucket ranges, never point estimates, and the UI must label them as such.\n\nInputs outside the metric's legal domain are rejected before bucketing rather than clamped into an edge bucket: a loss ratio of 1.3 is a producer bug, and silently filing it under '<= 1' would hide it.",
-  "weightUnit": "ms",
-  "definitions": [
-    {
-      "definitionId": "ratio-v1",
-      "appliesToUnit": "ratio",
-      "legalDomain": {
-        "minimum": 0,
-        "maximum": 1
-      },
-      "rejects": [
-        "negative",
-        "nonfinite",
-        "above-one"
-      ],
-      "upperBounds": [
-        0,
-        0.001,
-        0.005,
-        0.01,
-        0.02,
-        0.05,
-        0.1,
-        0.25,
-        0.5,
-        1
-      ],
-      "bucketCount": 11,
-      "note": "The first bucket is exactly zero — a measured zero is valid evidence and deserves its own bucket rather than being lumped with 'almost zero'. The last bucket, above 1, can only be reached by a rejected value and should therefore always be empty."
-    },
-    {
-      "definitionId": "delay-ms-v1",
-      "appliesToUnit": "ms",
-      "legalDomain": {
-        "minimum": 0
-      },
-      "rejects": [
-        "negative",
-        "nonfinite"
-      ],
-      "upperBounds": [
-        0,
-        1,
-        2,
-        5,
-        10,
-        20,
-        50,
-        100,
-        200,
-        300,
-        500,
-        1000,
-        2000
-      ],
-      "bucketCount": 14
-    },
-    {
-      "definitionId": "bitrate-bps-v1",
-      "appliesToUnit": "bps",
-      "legalDomain": {
-        "minimum": 0
-      },
-      "rejects": [
-        "negative",
-        "nonfinite"
-      ],
-      "upperBounds": [
-        0,
-        10000,
-        25000,
-        50000,
-        100000,
-        250000,
-        500000,
-        1000000,
-        2500000,
-        5000000,
-        10000000,
-        25000000
-      ],
-      "bucketCount": 13
-    },
-    {
-      "definitionId": "fps-v1",
-      "appliesToUnit": "fps",
-      "legalDomain": {
-        "minimum": 0
-      },
-      "rejects": [
-        "negative",
-        "nonfinite"
-      ],
-      "upperBounds": [
-        0,
-        1,
-        5,
-        10,
-        15,
-        24,
-        30,
-        60,
-        90,
-        120
-      ],
-      "bucketCount": 11
-    }
-  ]
-} as const;
+export type CheckSection = (typeof CHECK_CATALOGUE)['sections'][number];
+export type CheckDefinition = (typeof CHECK_CATALOGUE)['checks'][number];
 
-export const CAPABILITY_REGISTRY = {
-  "registryVersion": "capabilities-v1",
-  "description": "The capability keys a call digest must carry, and what each one asserts. Kept as data so the producer, the UI and the conformance suite read one list rather than three.\n\nA capability reflects measured evidence and producer support — not whether a schema field exists. A field present and null because nothing was measured is `unavailable`, not `available`. This is the mechanism that keeps a missing section from rendering as a healthy one.",
-  "requiredCallDigestKeys": [
-    "usage",
-    "joinOutcomes",
-    "audio",
-    "video",
-    "network",
-    "connectivity",
-    "paths",
-    "topology",
-    "cohorts",
-    "scores"
-  ],
-  "keys": {
-    "usage": "Participant sessions, peak concurrency, observed and connected participant time. Partial when membership intervals are known for only some participants.",
-    "joinOutcomes": "Application join attempts and their outcomes. Unavailable without a versioned attempt adapter — a peer connection is not a join attempt.",
-    "audio": "Inbound audio quality evaluation: loss, jitter, concealment, jitter buffer delay.",
-    "video": "Inbound and outbound video quality evaluation: loss, freeze, FPS, encode and decode cost, encoder limitation.",
-    "network": "Transport-level loss and round-trip time on the selected path.",
-    "connectivity": "Connection-state evidence: whether disconnection and failure can be observed at all.",
-    "paths": "Selected ICE path reconstruction — relay, protocol, and the server actually serving each interval. Unavailable where the producer's retained on-change metadata cannot establish it.",
-    "topology": "Publisher-to-subscriber relationships. Unavailable unless verified signalling or resolver evidence supports the links; equal SSRC alone never establishes one.",
-    "cohorts": "Dimension attribution for this call's participants.",
-    "scores": "Observer summary score metadata. Explicitly NOT a measured quality metric in v1: a native producer's default score of 5 is a default, not a healthy measurement, and scores are never fed into fleet means or percentiles."
-  },
-  "scoresNote": "v1 requires no overall score. Existing Observer score min/max/median may be surfaced as clearly labelled source-summary metadata through a future additive section. They may not enter any aggregate on any screen."
-} as const;
+/** The catalogue version the rules were written against. */
+export const CATALOGUE_VERSION = CHECK_CATALOGUE.catalogueVersion;
 
-export const REASON_CODES = {
-  "registryVersion": "reason-codes-v1",
-  "description": "Stable machine codes with display labels. A code the UI does not know must stay VISIBLE through a readable fallback — rendered from its own text — rather than being dropped or shown as 'unknown error'. A producer is free to emit a code this version has never seen; that is why the schema's pattern is permissive and why consumers must implement the fallback.\n\nThe fallback: replace separators with spaces and show the code verbatim beside it, so an operator can grep the producer for it.",
-  "fallback": {
-    "strategy": "humanize-and-show-raw",
-    "example": {
-      "code": "source.summary-truncated",
-      "label": "source summary truncated (source.summary-truncated)"
-    }
-  },
-  "codes": {
-    "source.missing": "No source of this kind was found",
-    "source.unreadable": "A source could not be read",
-    "source.invalid-json": "A source was not valid JSON",
-    "source.truncated": "A source was cut short",
-    "source.summary-truncated": "The Observer summary was missing sections",
-    "source.summary-only": "Only a summary was available; no client samples",
-    "source.late-arrival": "A source arrived after this generation was computed",
-    "source.replaced": "A source was replaced by a corrected version",
-    "source.conflicting-authority": "Two authoritative sources disagreed",
-    "source.duplicate-sfu-observation": "The same observation arrived from more than one SFU",
-    "coverage.gap-exceeds-max-interval": "A sampling gap exceeded the maximum supported interval",
-    "coverage.cadence-unknown": "Expected sampling cadence could not be established",
-    "coverage.expected-sources-unknown": "How many sources to expect could not be established",
-    "coverage.partial-population": "Some calls or participants have unknown start times",
-    "coverage.child-period-missing": "A child period was not evaluated",
-    "metric.counter-missing": "A required counter was absent",
-    "metric.counter-reset": "A counter reset or was corrected",
-    "metric.denominator-zero": "The denominator was zero, so no rate can be reported",
-    "metric.remote-report-stale": "The remote report's timestamp had not advanced",
-    "metric.no-valid-intervals": "No interval met the policy's validity rules",
-    "metric.out-of-domain": "An observation fell outside the metric's legal range and was rejected",
-    "metric.overflow": "A total exceeded the safe integer range",
-    "metric.not-supported-by-producer": "This producer does not report the required fields",
-    "eligibility.track-muted": "The track was muted",
-    "eligibility.track-disabled": "The track was disabled",
-    "eligibility.track-ended": "The track had ended",
-    "eligibility.track-paused": "The track was intentionally paused",
-    "eligibility.context-unknown": "Track context was unknown, so eligibility could not be decided",
-    "temporal.resolution-insufficient": "Evidence localises this only to a sampling interval",
-    "temporal.clock-uncertainty-exceeded": "Clock uncertainty was too large to correlate clients",
-    "temporal.clock-uncertainty-unbounded": "Clock uncertainty could not be bounded",
-    "identity.unverified": "Identity could not be verified, so records were not merged",
-    "identity.epoch-reused": "A stat ID was reused after a reconnect",
-    "topology.relationship-unverified": "No verified evidence links publisher and subscriber",
-    "path.on-change-metadata-insufficient": "Retained on-change metadata cannot establish the selected path",
-    "cohort.interval-ambiguous": "The serving path was ambiguous, so exposure went to the unknown cohort",
-    "joins.adapter-missing": "No versioned application attempt feed is configured",
-    "joins.attempt-unassigned": "The attempt is not yet associated with a call",
-    "lifecycle.open": "The call is still open, so figures are provisional",
-    "lifecycle.evidence-missing": "No lifecycle evidence of sufficient authority was found",
-    "read.pending": "Processing has not produced this digest yet",
-    "read.not-found": "Nothing has been written for this subject",
-    "read.unsupported-version": "The stored document uses a schema version this dashboard does not support",
-    "read.failed": "The read failed",
-    "read.forbidden": "Not authorized for this tenant or resource",
-    "read.cursor-expired": "The cursor was issued against a revision that is no longer served",
-    "read.cursor-mismatch": "The cursor does not match the requested filters",
-    "read.revision-superseded": "A newer revision was published while this one was being read",
-    "read.stale-revision": "The served revision is usable but known to lag",
-    "policy.capability-disabled": "This category is disabled by policy",
-    "policy.inputs-unavailable": "The policy's required inputs are not available"
-  }
-} as const;
+const CHECKS_BY_ID = new Map<string, CheckDefinition>(
+  CHECK_CATALOGUE.checks.map((c) => [c.id, c]),
+);
+
+const SECTIONS_BY_ID = new Map<string, CheckSection>(
+  CHECK_CATALOGUE.sections.map((s) => [s.id, s]),
+);
 
 /**
- * The policy the fixtures are built against.
+ * The definition for a check id, or undefined when this build has none.
  *
- * Shipped so the UI can name the policy behind a figure and describe how a
- * category was decided. A digest produced under a different `policyId` is
- * described by *that* policy, which the server fetches by id — this constant is
- * the one the fixtures use, not an assumption about production.
+ * Undefined is a real case, not a bug: a digest written by a newer processor
+ * may name a check this UI has never heard of. The caller shows it as an
+ * unrecognised check with its raw id rather than hiding it — a check the reader
+ * cannot name is still a check that failed.
  */
-export const CONSERVATIVE_V1_POLICY = {
-  "policyId": "conservative-v1",
-  "status": "proposed",
-  "description": "The initial input and impairment policy, for development and fixture interoperability. It is NOT an empirically validated quality model: the thresholds below are starting points, not findings, and must be confirmed or revised against real telemetry before production. Every change takes a new policyId and updated fixtures, because figures computed under different policies may not be combined.\n\nThere are no hidden defaults. Anything this file does not state, the processor may not assume.",
-  "sampling": {
-    "maxSupportedIntervalMs": 10000,
-    "notes": "An interval longer than this contributes no interpolated measurement. The gap is recorded as a gap — a 40-second hole is not four 10-second intervals of whatever was last seen. Repeated identical timestamps add no exposure, so a duplicated sample cannot inflate measured duration."
-  },
-  "freshness": {
-    "remoteReportsRequireAdvancedTimestamp": true,
-    "notes": "A remote (receiver-side) report whose timestamp has not advanced is stale and contributes nothing. It is never carried forward into later intervals as if still true — which is the difference between 'RTT was 400 ms for ten minutes' and 'RTT was measured once, ten minutes ago'."
-  },
-  "clockSkew": {
-    "crossClientCorrection": "none",
-    "maxUncertaintyMs": 1000,
-    "notes": "No cross-client clock correction is invented. Cross-client temporal correlation is rejected when measured clock uncertainty exceeds 1000 ms or cannot be bounded at all, because correlating two participants' timelines through unknown skew manufactures causality that may not exist."
-  },
-  "lifecyclePrecedence": [
-    "application-events",
-    "observer-verified",
-    "sample-bounds"
-  ],
-  "lifecycleNotes": "Explicit application membership and outcome events win for application lifecycle; verified Observer lifecycle follows. Sample bounds establish observation only — first and last sample are when we were watching, not when the person joined and left. Conflicting authoritative sources produce partial coverage and a conflict warning rather than a silent pick.",
-  "eligibility": {
-    "ineligibleTrackStates": [
-      "muted",
-      "disabled",
-      "ended",
-      "paused"
-    ],
-    "missingContextIsRecorded": true,
-    "networkMetricsVisibleWhileMuted": true,
-    "notes": "A knowingly muted, disabled, ended or intentionally paused track is ineligible for impairment evaluation: absence of media is not failure of media. Missing context is recorded rather than assumed either way — lack of media alone never proves a fault. Network metrics that were successfully measured stay visible while a media track is muted, because the connection is still being observed."
-  },
-  "impairmentTriggers": {
-    "evaluation": "per-interval-classification",
-    "hysteresisMs": 0,
-    "recoveryDelayMs": 0,
-    "categories": {
-      "audio": {
-        "requires": [
-          "audio.inbound.speechConcealment"
-        ],
-        "trigger": "speech concealment ratio > 0.05"
-      },
-      "video": {
-        "requires": [
-          "video.inbound.freezeShare"
-        ],
-        "trigger": "browser freeze duration delta > 0",
-        "temporalCaveat": "A nonzero cumulative freeze delta is a video impairment observation for that sampling interval. It does NOT classify the whole interval as impaired participant time: without exact temporal support it contributes measured stream freeze time plus an uncertain observation, and participant impairment duration for that evidence remains unknown. The same restriction applies to reconstructing impairment duration from concealment ratios."
-      },
-      "network": {
-        "requires": [
-          "audio.inbound.loss",
-          "video.inbound.loss",
-          "audio.outbound.rtcpRtt",
-          "video.outbound.rtcpRtt",
-          "transport.iceRtt"
-        ],
-        "trigger": "inbound loss > 0.05, or RTCP/ICE RTT > 400 ms",
-        "notes": "Any one of the required inputs being measurable is enough to evaluate the category for that interval; each metric is judged on its own evidence."
-      },
-      "connectivity": {
-        "requires": [
-          "connection-state"
-        ],
-        "trigger": "connection state explicitly disconnected or failed"
-      }
-    },
-    "notes": "Interval classifications, not persistent inferred episodes. A valid negative interval ends the classification immediately: there is no hysteresis and no hidden recovery delay, so the digest never claims impairment it did not measure. Each category needs its own valid inputs — a category whose inputs are missing is unknown for that interval, not healthy.\n\nFindings emitted by existing client or observer detectors keep their own lifecycle and policy. They are not relabelled as these digest rules, and their `origin` and `algorithmId` say so."
-  },
-  "exposureAccounting": {
-    "assessed": "union of intervals where the category could be evaluated",
-    "impaired": "union of positive classifications within assessed time",
-    "unknown": "eligible observed participant time outside assessed time",
-    "anyCategory": "impaired is the union of known positive categories; assessed is that positive union plus intervals where every applicable enabled category could be evaluated and none was impaired",
-    "notes": "A known positive stays affected even when another category is unknown — that is the point of assembling `any` as a union rather than an intersection. Category durations overlap and must never be added together. Disabled or non-applicable categories are declared in capabilities.\n\nThis deliberately leaves some participant impairment duration unknown even where stream degradation is measured. That is the honest answer, and the UI must still show the stream metrics and the findings rather than hiding a measured problem because its duration cannot be bounded."
-  },
-  "deduplication": {
-    "multiSfu": {
-      "requires": [
-        "verified-identity",
-        "matching-record-timestamps"
-      ],
-      "onOverlappingDisagreement": "retain source evidence, select by committed deterministic source precedence, mark coverage partial and conflicting",
-      "neverAdd": true,
-      "notes": "Multi-SFU observations of the same client are never added. Two SFUs reporting the same participant is one participant seen twice, and summing them doubles every count that participant contributed."
-    },
-    "sourcePrecedence": [
-      "observer-summary",
-      "client-samples",
-      "router-samples"
-    ],
-    "precedenceNotes": "Deterministic so that a retry picks the same winner. Stated here rather than left to arrival order, because arrival order is not reproducible."
-  },
-  "cohortAttribution": {
-    "regionMeaning": "declared application or deployment region",
-    "neverInferred": [
-      "region-from-ip"
-    ],
-    "multiValued": {
-      "sfuId": "assigned by verified serving path for each interval",
-      "turnServer": "assigned by verified serving path for each interval",
-      "ambiguousIntervals": "unknown cohort"
-    },
-    "notes": "Time-varying dimensions split their exposure across the values actually held, so a participant who moved between two SFUs contributes to both without duplicating their participant time. Ambiguous intervals go to the unknown cohort rather than being guessed or dropped."
-  },
-  "joinAttempts": {
-    "requires": "a versioned application attempt adapter",
-    "adapterFields": [
-      "attemptId",
-      "tenantId",
-      "callId",
-      "clientId",
-      "startedAt",
-      "outcomeAt",
-      "outcome",
-      "reasonCode"
-    ],
-    "associationOptional": [
-      "callId",
-      "clientId"
-    ],
-    "unassignedAttempts": "counted in the tenant-level attempt index and in period joins, but never in call counts",
-    "neverInvent": "a synthetic successful call for an attempt with no call",
-    "successKpi": "succeeded / (succeeded + failed)",
-    "notes": "A peer connection is not a join attempt. Without this adapter the join capability is unavailable, and the UI shows it as unavailable rather than as zero failures."
-  },
-  "optionalInputs": {
-    "applicationContext": "optional input, never an inferred fact",
-    "sfuFeedback": "optional input, never an inferred fact"
-  },
-  "unavailableCapabilityRule": "If a definition in this policy cannot be supported by the fields actually available, the corresponding capability is marked unavailable with a reason. Unavailable evidence produces unavailable output — never a default, never a zero."
-} as const;
-
-export type MetricDefinition = (typeof METRIC_REGISTRY)['metrics'][number];
-export type HistogramDefinition = (typeof HISTOGRAM_REGISTRY)['definitions'][number];
-
-const METRICS_BY_ID = new Map<string, MetricDefinition>(
-  METRIC_REGISTRY.metrics.map((m) => [m.metricId, m]),
-);
-
-const HISTOGRAMS_BY_ID = new Map<string, HistogramDefinition>(
-  HISTOGRAM_REGISTRY.definitions.map((d) => [d.definitionId, d]),
-);
-
-/** The definition for a metric id, or undefined when this version has none. */
-export function metricDefinition(metricId: string): MetricDefinition | undefined {
-  return METRICS_BY_ID.get(metricId);
+export function checkDefinition(id: string): CheckDefinition | undefined {
+  return CHECKS_BY_ID.get(id);
 }
 
-export function histogramDefinition(definitionId: string): HistogramDefinition | undefined {
-  return HISTOGRAMS_BY_ID.get(definitionId);
+export function checkSection(id: string): CheckSection | undefined {
+  return SECTIONS_BY_ID.get(id);
+}
+
+/** Sections in display order. */
+export function orderedSections(): CheckSection[] {
+  return [...CHECK_CATALOGUE.sections].sort((a, b) => a.order - b.order);
+}
+
+/** A section's checks in display order. */
+export function checksInSection(sectionId: string): CheckDefinition[] {
+  return CHECK_CATALOGUE.checks
+    .filter((c) => c.section === sectionId)
+    .sort((a, b) => a.order - b.order);
 }
 
 /**
- * A reason code's label, or a readable fallback.
+ * A check's question, or a readable fallback.
  *
- * Never returns empty and never swallows the code: an unrecognised code is
- * humanized and shown with its raw form in brackets, so a reason a newer
- * producer emits stays visible and greppable instead of becoming "unknown
- * error". The contract requires this fallback of every consumer.
+ * Never returns empty and never swallows the id, for the same reason the v1
+ * contract required it of reason codes: an unrecognised check must stay visible
+ * and greppable instead of becoming "unknown".
  */
-export function reasonLabel(code: string): string {
-  const known = (REASON_CODES.codes as Record<string, string | undefined>)[code];
-  if (known) return known;
-  const humanized = code.replace(/[-.]/g, ' ').trim();
-  return humanized ? `${humanized} (${code})` : code;
+export function checkQuestion(id: string): string {
+  return CHECKS_BY_ID.get(id)?.question ?? `Unrecognised check (${id})`;
 }
 
-/** Bucket edge labels for a histogram definition: (-inf, b0], (b0, b1], ..., (bn, +inf). */
-export function histogramBucketLabels(
-  definitionId: string,
-  format: (value: number) => string = String,
-): string[] | undefined {
-  const definition = HISTOGRAMS_BY_ID.get(definitionId);
-  if (!definition) return undefined;
-
-  const bounds = definition.upperBounds as readonly number[];
-  const labels = [`\u2264 ${format(bounds[0]!)}`];
-  for (let i = 1; i < bounds.length; i += 1) {
-    labels.push(`${format(bounds[i - 1]!)}\u2013${format(bounds[i]!)}`);
-  }
-  labels.push(`> ${format(bounds[bounds.length - 1]!)}`);
-  return labels;
-}
+/**
+ * Every built-in issue type the catalogue claims, to the check that claims it.
+ *
+ * Built eagerly so the processor can assert the inverse — that no built-in
+ * issue type is unclaimed. An issue with no check would fire, be stored, and
+ * never appear in any section.
+ */
+export const CHECK_BY_ISSUE_TYPE: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(
+    CHECK_CATALOGUE.checks.flatMap((c) =>
+      ((c as { issueTypes?: readonly string[] }).issueTypes ?? []).map((t) => [t, c.id]),
+    ),
+  ),
+);

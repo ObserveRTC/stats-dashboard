@@ -11,1464 +11,638 @@
  */
 
 /**
- * UTC epoch milliseconds
+ * An absolute instant, UTC
  *
- * Integer, not a float: a fractional millisecond would make two timestamps incomparable for the interval arithmetic every metric depends on.
+ * RFC 3339 with a `Z` offset. Server time, never client-reported wall clock: a browser with a skewed clock would otherwise move a call to the wrong day.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "epochMs".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "instant".
  */
-export type EpochMs = number;
+export type Instant = string;
 /**
- * A duration in milliseconds
+ * The UTC day a call is assigned to
  *
- * Nonnegative. Fractional durations are allowed because a duration-weighted mean divides by one.
+ * `YYYY-MM-DD`, from the UTC date of the call's START. A call that begins at 23:50Z and ends at 00:20Z belongs entirely to the day it started; it is not split. One rule, applied in storage, aggregation and on screen.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "durationMs".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "reportingDay".
  */
-export type DurationMs = number;
+export type ReportingDay = string;
 /**
- * A nonnegative integer count
+ * Why a stretch of a client's time could not be assessed. `stats-collection-gap` and `tab-hidden` come from built-in events; `before-first-sample` and `after-last-sample` are the edges of what was observed at all.
  *
- * Bounded by Number.MAX_SAFE_INTEGER per the contract's number rule: beyond it a JSON number no longer round-trips, so the producer must mark the measurement unavailable with a warning rather than round silently.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "count".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "gapReason".
  */
-export type Count = number;
+export type GapReason =
+  | 'stats-collection-gap'
+  | 'tab-hidden'
+  | 'before-first-sample'
+  | 'after-last-sample'
+  | 'counter-reset';
 /**
- * A count, or null for unknown. Never zero and never -1 as a sentinel.
+ * What this client session's evidence amounts to
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "nullableCount".
+ * Disjoint by construction, and ordered: a session showing a user-experience symptom is `qoe-symptom` even if it also had a transport condition, because the symptom is the thing that happened to the person.
+ *
+ * `qos-only` is a transport or connectivity condition with no symptom evidence — worth surfacing, and NOT a claim that anyone noticed. `no-issue-within-coverage` is exactly that and not 'healthy': it is bounded by what could be assessed. `insufficient-evidence` is a session that could not be classified at all.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "classification".
  */
-export type NullableCount = Count | null;
+export type Classification =
+  'qoe-symptom' | 'qos-only' | 'no-issue-within-coverage' | 'insufficient-evidence';
 /**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "nullableDurationMs".
+ * The answer to a check
+ *
+ * `passed` — the rule ran against sufficient evidence and found no fault.
+ * `failed` — the rule ran and found the fault.
+ * `not-assessable` — the evidence the rule needs is absent, partial or reset. NEVER rendered as a pass, and never counted as healthy.
+ * `not-applicable` — the subject cannot have this fault: no inbound video, no audio track, no outbound media.
+ *
+ * The distinction that matters most: a check resting only on "no issue fired", with no corroborating statistic, is `not-assessable`. An absent detector is not a healthy call.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "outcome".
  */
-export type NullableDurationMs = DurationMs | null;
+export type Outcome = 'passed' | 'failed' | 'not-assessable' | 'not-applicable';
 /**
- * A finite JSON number. JSON has no NaN or Infinity literal, so `type: number` already excludes them; this exists to say so at the point of use.
+ * Mirrors IssueScope in src/schema/ClientIssueTypes.ts, so a finding's subject and the issue that evidences it describe the same thing.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "finiteNumber".
- */
-export type FiniteNumber = number;
-/**
- * A fraction from 0 to 1
- *
- * Never 0-100. The UI may format as a percentage; the wire value is always the fraction.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "ratio".
- */
-export type Ratio = number;
-/**
- * An opaque identifier
- *
- * Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "opaqueId".
- */
-export type OpaqueId = string;
-/**
- * A stable machine reason code
- *
- * Looked up in the reason-code label map shipped with the contract. An unknown code stays visible through a readable fallback rather than being dropped, so the pattern is permissive by design: a producer may emit a code this registry version has never seen.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "reasonCode".
- */
-export type ReasonCode = string;
-/**
- * @maxItems 64
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "reasonCodes".
- */
-export type ReasonCodes = ReasonCode[];
-/**
- * How complete the sources behind a figure were
- *
- * Distinct from metric measurability and from call lifecycle. A complete source set can still yield an unavailable metric, and an open call can have complete sources so far.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "completeness".
- */
-export type Completeness = 'complete' | 'partial' | 'unknown';
-/**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "capabilityState".
- */
-export type CapabilityState = 'available' | 'partial' | 'unavailable';
-/**
- * A cohort dimension
- *
- * `region` means the declared application or deployment region, never a region inferred from an IP address.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "dimension".
- */
-export type Dimension =
-  | 'browser'
-  | 'browserMajorVersion'
-  | 'os'
-  | 'appVersion'
-  | 'sdkVersion'
-  | 'producer'
-  | 'region'
-  | 'sfuId'
-  | 'turnServer';
-/**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
  * via the `definition` "subjectKind".
  */
-export type SubjectKind = 'call' | 'participant' | 'stream' | 'transport';
+export type SubjectKind = 'client' | 'peer-connection' | 'inbound-track' | 'outbound-track';
 /**
- * @maxItems 256
+ * The unit of an observed value
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "evidenceRefs".
+ * Closed on purpose. A value whose unit is not in this list cannot be formatted by the UI, and an unformatted number on a quality page is worse than an absent one. `none` is for a dimensionless count that is not a quantity, such as a state label's ordinal.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "unit".
  */
-export type EvidenceRefs = EvidenceRef[];
+export type Unit =
+  | 'count'
+  | 'ms'
+  | 's'
+  | 'bps'
+  | 'bytes'
+  | 'fraction'
+  | 'percent'
+  | 'fps'
+  | 'pixels'
+  | 'dBov'
+  | 'none';
 /**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "nullableResourceRef".
+ * Which existing section of the client or call page an evidence link opens. The first four mirror IssueTimelineTarget; `samples` is the raw sample browser and `client` is the client page itself.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "evidenceTarget".
  */
-export type NullableResourceRef = ResourceRef | null;
+export type EvidenceTarget =
+  'consumer' | 'producer' | 'transport' | 'session' | 'samples' | 'client';
 /**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "sourceKind".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "reportingMonth".
  */
-export type SourceKind =
-  | 'client-samples'
-  | 'observer-summary'
-  | 'observer-events'
-  | 'application-events'
-  | 'router-samples';
+export type ReportingMonth = string;
 /**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "metricStatus".
+ * Counts of how the client sessions answered. Deliberately counts and not a verdict: a call where one of eight clients froze is not simply 'failed', and collapsing it to one word is how a dashboard starts lying.
  */
-export type MetricStatus = 'measured' | 'partial' | 'unavailable';
-/**
- * One metric over one subject
- *
- * Identity is the metricId, whose subject, direction, media and units are fixed by the registry. The same metricId under a different subject never implies the same exposure, so aggregation only ever combines identical metricIds at the same scope.
- *
- * The `unavailable` branch is enforced below rather than left to prose: an unavailable metric with a numerator is the exact shape that turns 'nobody measured this' into a rendered zero.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "metricAggregate".
- */
-export type MetricAggregate = MetricAggregate1;
-/**
- * A metric registry id
- *
- * Must exist in the registry version the digest's policy pins. The pattern mirrors the registry's namespacing (`<media|transport>.<direction>.<name>`) without hard-coding the list, so an additive registry version does not invalidate this schema; the conformance suite checks membership.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "metricId".
- */
-export type MetricId = string;
-/**
- * @maxItems 512
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "metricAggregates".
- */
-export type MetricAggregates = MetricAggregate[];
-/**
- * An impairment category
- *
- * `any` is not a sum of the others: category durations overlap, so adding them double-counts. See the ImpairmentExposure description for how `any` is assembled.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "impairmentCategory".
- */
-export type ImpairmentCategory = 'audio' | 'video' | 'network' | 'connectivity' | 'any';
-/**
- * @maxItems 5
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "impairmentExposures".
- */
-export type ImpairmentExposures =
-  | []
-  | [ImpairmentExposure]
-  | [ImpairmentExposure, ImpairmentExposure]
-  | [ImpairmentExposure, ImpairmentExposure, ImpairmentExposure]
-  | [ImpairmentExposure, ImpairmentExposure, ImpairmentExposure, ImpairmentExposure]
-  | [
-      ImpairmentExposure,
-      ImpairmentExposure,
-      ImpairmentExposure,
-      ImpairmentExposure,
-      ImpairmentExposure
-    ];
-/**
- * A finding category
- *
- * An open vocabulary on purpose: existing client and observer detectors keep their own category names rather than being relabelled as digest rules, so the set cannot be closed here. The label map supplies display text and an unknown category falls back to its raw code.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "findingCategory".
- */
-export type FindingCategory = string;
-/**
- * @maxItems 128
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "findingCounts".
- */
-export type FindingCounts = FindingCount[];
-/**
- * The outcome of an authorized read
- *
- * `ready` with an empty digest is a verified empty period. `pending` is a job that has not produced one yet. The two must never render the same way.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "readState".
- */
-export type ReadState =
-  'ready' | 'pending' | 'not-found' | 'unsupported-version' | 'failed' | 'forbidden';
-/**
- * An opaque identifier
- *
- * Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.
- */
-export type OpaqueId1 = string;
-/**
- * One direction of one track, or one simulcast encoding
- *
- * `epoch` is part of the stream's identity: a reused stat id after a reconnect is a different epoch and a different stream, which is what stops two unrelated counter runs being differenced into one impossible delta.
- *
- * `publisherStreamId` links a subscriber's inbound stream to the publisher's outbound stream, and stays null unless verified signalling or resolver evidence supports it. SFU tracks are never joined on equal SSRC alone — SSRCs are reassigned, and a wrong join silently compares two different people's media.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "streamDigest".
- */
-export type StreamDigest = StreamDigest1;
-/**
- * A measurement, state, event or gap over an interval
- *
- * The interval is the honest resolution of the observation, not a fabricated exact occurrence time. A sampled cumulative freeze counter tells you there was freeze time somewhere inside the interval; it does not tell you when the freeze started or stopped, and this record type refuses to pretend otherwise.
- *
- * `validity` carries why a measurement is or is not usable, so a chart can draw a gap instead of interpolating across one. `missing`, `stale`, `reset` and `gap` records are evidence about the absence, which is why they exist as records at all rather than as holes in the series.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "timelineRecord".
- */
-export type TimelineRecord = {
-  [k: string]: unknown;
-} & TimelineRecord1;
-/**
- * An opaque identifier
- *
- * Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.
- */
-export type OpaqueId2 = string;
-/**
- * UTC epoch milliseconds
- *
- * Integer, not a float: a fractional millisecond would make two timestamps incomparable for the interval arithmetic every metric depends on.
- */
-export type EpochMs1 = number;
-/**
- * An opaque identifier
- *
- * Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.
- */
-export type OpaqueId3 = string;
-/**
- * A duration in milliseconds
- *
- * Nonnegative. Fractional durations are allowed because a duration-weighted mean divides by one.
- */
-export type DurationMs1 = number;
-/**
- * The outcome of an authorized read
- *
- * Six states, each needing its own UI treatment. `ready` with an empty digest is a verified empty period; `pending` is a job that has not produced one. A stale but usable revision stays `ready` and carries a freshness warning instead of being downgraded — withholding usable figures because they are an hour old helps nobody.
- *
- * Offering retry on `failed` must not implicitly start processing: a read is a read.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "readResult".
- */
-export type ReadResult = {
-  [k: string]: unknown;
-} & ReadResult1;
-/**
- * An opaque identifier
- *
- * Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.
- */
-export type OpaqueId4 = string;
-/**
- * A count, or null for unknown. Never zero and never -1 as a sentinel.
- */
-export type NullableCount1 = Count | null;
-/**
- * A count, or null for unknown. Never zero and never -1 as a sentinel.
- */
-export type NullableCount2 = Count | null;
-/**
- * A duration in milliseconds
- *
- * Nonnegative. Fractional durations are allowed because a duration-weighted mean divides by one.
- */
-export type DurationMs2 = number;
-/**
- * Requires explicit connection-state evidence. Null when there is none — not a fallback to observed time.
- */
-export type NullableDurationMs1 = DurationMs | null;
-/**
- * Period digest, version 1
- *
- * One UTC day or month: counts, exposure, distributions, cohort breakdowns, per-bucket activity and a ranked worst-call list.
- *
- * The arithmetic rules here are the substance of the contract, because every one of them has a plausible wrong answer. Additive exposure and numerator/denominator fields sum across periods. `callsWithExposure` and `largestCallPeakParticipants` do not — the first must be deduplicated by call identity across the days of a month, the second is a maximum. `findingCounts[].activeAtEnd` is a boundary evaluation and is not additive either. No average of averages, medians or percentiles anywhere.
- *
- * A month therefore cannot be produced from anonymous daily totals. It needs a persisted per-call contribution index to deduplicate membership, replace late outcomes and evaluate boundary state. That index is the producer's business and is never a UI payload.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "periodDigest".
- */
-export type PeriodDigest = PeriodDigest1;
-/**
- * A nonnegative integer count
- *
- * Bounded by Number.MAX_SAFE_INTEGER per the contract's number rule: beyond it a JSON number no longer round-trips, so the producer must mark the measurement unavailable with a warning rather than round silently.
- */
-export type Count1 = number;
-/**
- * A nonnegative integer count
- *
- * Bounded by Number.MAX_SAFE_INTEGER per the contract's number rule: beyond it a JSON number no longer round-trips, so the producer must mark the measurement unavailable with a warning rather than round silently.
- */
-export type Count2 = number;
-/**
- * A nonnegative integer count
- *
- * Bounded by Number.MAX_SAFE_INTEGER per the contract's number rule: beyond it a JSON number no longer round-trips, so the producer must mark the measurement unavailable with a warning rather than round silently.
- */
-export type Count3 = number;
-/**
- * A duration in milliseconds
- *
- * Nonnegative. Fractional durations are allowed because a duration-weighted mean divides by one.
- */
-export type DurationMs3 = number;
-/**
- * A duration in milliseconds
- *
- * Nonnegative. Fractional durations are allowed because a duration-weighted mean divides by one.
- */
-export type DurationMs4 = number;
-/**
- * A count, or null for unknown. Never zero and never -1 as a sentinel.
- */
-export type NullableCount3 = Count | null;
-/**
- * Assigned by raise time and deduplicated by stable finding identity.
- *
- * @maxItems 128
- */
-export type FindingCounts1 = FindingCount[];
-/**
- * An opaque identifier
- *
- * Tenant-scoped and meaningless as text: no consumer may derive semantics, ordering or a storage key from its characters. Length-bounded only to keep a malformed document from becoming a memory problem.
- */
-export type OpaqueId5 = string;
+export type CallLevelRollUpOneEntryPerCatalogueCheck = CallCheck[];
 
 /**
  * Carrier for the generated types. Not a wire format — nothing ever serializes this object; it exists so every contract type is reachable from one root and therefore gets emitted.
  */
-export interface DigestContractV1 {
-  epochMs?: EpochMs;
-  durationMs?: DurationMs;
-  count?: Count;
-  nullableCount?: NullableCount;
-  nullableDurationMs?: NullableDurationMs;
-  finiteNumber?: FiniteNumber;
-  ratio?: Ratio;
-  opaqueId?: OpaqueId;
-  reasonCode?: ReasonCode;
-  reasonCodes?: ReasonCodes;
-  timeRange?: TimeRange;
-  completeness?: Completeness;
-  capabilityState?: CapabilityState;
-  capability?: Capability;
-  capabilityMap?: CapabilityMap;
-  dimension?: Dimension;
+export interface DigestContractV2 {
+  callIdentity?: CallIdentity;
+  callCoverage?: CallCoverage;
+  callCheck?: CallCheck;
+  clientDigest?: ClientDigest;
+  classification?: Classification;
+  clientCheck?: ClientCheck;
+  instant?: Instant;
+  interval?: Interval1;
+  reportingDay?: ReportingDay;
+  reportingMonth?: ReportingMonth;
+  unit?: Unit;
+  observedValue?: ObservedValue;
   subjectKind?: SubjectKind;
   subject?: Subject;
+  issueRef?: IssueRef;
+  eventRef?: EventRef;
+  evidenceTarget?: EvidenceTarget;
   evidenceRef?: EvidenceRef;
-  evidenceRefs?: EvidenceRefs;
-  resourceRef?: ResourceRef;
-  nullableResourceRef?: NullableResourceRef;
-  provenance?: Provenance;
-  sourceKind?: SourceKind;
-  source?: Source;
+  gapReason?: GapReason;
+  gap?: Gap;
   coverage?: Coverage;
-  histogram?: Histogram;
-  metricStatus?: MetricStatus;
-  metricAggregate?: MetricAggregate;
-  metricId?: MetricId;
-  metricAggregates?: MetricAggregates;
-  impairmentCategory?: ImpairmentCategory;
-  impairmentExposure?: ImpairmentExposure;
-  impairmentExposures?: ImpairmentExposures;
-  joinAggregate?: JoinAggregate;
-  findingCount?: FindingCount;
-  findingCounts?: FindingCounts;
-  findingCategory?: FindingCategory;
-  readState?: ReadState;
-  participantDigest?: ParticipantDigest;
-  streamDigest?: StreamDigest;
-  pathDigest?: PathDigest;
-  timelineRecord?: TimelineRecord;
-  finding?: Finding;
-  cohortAggregate?: CohortAggregate;
-  periodBucket?: PeriodBucket;
-  rankedCall?: RankedCall;
-  manifest?: Manifest;
-  page?: Page;
-  pageLimits?: PageLimits;
-  callSearchRow?: CallSearchRow;
-  callSearchQuery?: CallSearchQuery;
-  readResult?: ReadResult;
+  outcome?: Outcome;
+  outcomeCounts?: OutcomeCounts;
+  clientSessionRef?: ClientSessionRef;
+  callRef?: CallRef;
+  provenance?: Provenance;
+  period?: Period;
+  sources?: Sources;
+  sourceFailure?: SourceFailure;
+  totals?: Totals;
+  periodCheck?: PeriodCheck;
+  classificationCounts?: ClassificationCounts;
+  trend?: Trend;
+  trendBucket?: TrendBucket;
+  affectedByCheck?: AffectedByCheck;
   callDigest?: CallDigest;
-  periodDigest?: PeriodDigest;
+  periodSummary?: PeriodSummary;
 }
 /**
- * A half-open interval [startAt, endAt)
- *
- * Half-open so adjacent intervals tile without double-counting the shared instant — which is what keeps a union of observation intervals from over-reporting exposure. An event may use startAt === endAt and adds no duration.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "timeRange".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "callIdentity".
  */
-export interface TimeRange {
-  startAt: EpochMs;
-  endAt: EpochMs;
+export interface CallIdentity {
+  callId: string;
+  roomId: string;
+  startedAt: Instant;
+  endedAt: Instant;
+  reportingDay: ReportingDay;
+  /**
+   * Every SFU that served the call, from the router reports. Context only — a multi-SFU call is still one call.
+   */
+  sfuIds?: string[];
 }
 /**
- * Whether a section could be produced, and why not
+ * Call-level coverage
  *
- * Reflects measured evidence and producer support, not the mere existence of a schema field. `reasons` is required even when available, where it is empty — an unavailable capability with no reason is the failure this shape exists to prevent.
+ * Spelled out in full rather than composed from common.json#/$defs/coverage with allOf. That composition is the obvious move and it does not work: the shared definition seals itself with additionalProperties:false, so every call-level field added beside it is rejected by the inner schema. Listing the three second-fields twice is the cheaper mistake, and a test pins them against the client-level ones.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "capability".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "callCoverage".
  */
-export interface Capability {
-  state: CapabilityState;
-  reasons: ReasonCodes;
+export interface CallCoverage {
+  observedSeconds: number;
+  assessedSeconds: number;
+  unassessedSeconds: number;
+  gaps?: Gap[];
+  /**
+   * Client sessions with at least one sample.
+   */
+  clientsObserved: number;
+  /**
+   * Of those, the ones where at least one check reached passed or failed. The gap between this and clientsObserved is the honest unknown.
+   */
+  clientsAssessed: number;
+  /**
+   * Whether call-summary.json was readable. Without it the call's bounds and display names are inferred from samples, which is weaker.
+   */
+  callSummaryPresent: boolean;
+  /**
+   * Plain sentences naming what could not be assessed and why. Shown verbatim; the one place prose is stored, because a limitation is specific to one call and cannot be resolved from a registry.
+   */
+  limitations?: string[];
 }
 /**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "capabilityMap".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "gap".
  */
-export interface CapabilityMap {
-  [k: string]: Capability;
+export interface Gap {
+  from: Instant;
+  to: Instant;
+  reason: GapReason;
 }
 /**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "callCheck".
+ */
+export interface CallCheck {
+  /**
+   * A key of the shipped check catalogue. The question text, section and order are resolved from there, not stored here.
+   */
+  id: string;
+  counts: OutcomeCounts;
+  /**
+   * Assessed client-seconds inside a failing interval. Client duration, not call duration and not stream duration — the three differ and conflating them is how an 8-client call reports more impaired time than it lasted. Absent when the rule has no interval.
+   */
+  failedSeconds?: number | null;
+}
+/**
+ * How a roll-up answered, with its denominator
+ *
+ * `evaluated` is the denominator and equals the sum of the four. It is stored rather than left to the reader because a reader that adds the four to get it will be wrong the day a fifth outcome exists.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "outcomeCounts".
+ */
+export interface OutcomeCounts {
+  passed: number;
+  failed: number;
+  notAssessable: number;
+  notApplicable: number;
+  evaluated: number;
+}
+/**
+ * One client session's checks
+ *
+ * `clientId` is unique within this call only. The addressable identity of this session is the call's `roomId` and `callId` plus this `clientId`.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "clientDigest".
+ */
+export interface ClientDigest {
+  clientId: string;
+  displayName?: string;
+  coverage: Coverage;
+  classification?: Classification;
+  checks: ClientCheck[];
+}
+/**
+ * How much of the time could be assessed at all
+ *
+ * Read before any count anywhere in the document. `assessedSeconds + unassessedSeconds` equals `observedSeconds`; time outside the observation window is not counted as either, because a client that joined late was not unassessable, it was absent.
+ *
+ * This object is the reason a quiet period and a broken pipeline cannot look alike.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "coverage".
+ */
+export interface Coverage {
+  observedSeconds: number;
+  assessedSeconds: number;
+  unassessedSeconds: number;
+  gaps?: Gap[];
+}
+/**
+ * One question, answered for one client session
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "clientCheck".
+ */
+export interface ClientCheck {
+  id: string;
+  outcome: Outcome;
+  subject?: Subject;
+  /**
+   * The rule as applied, in one line, with the threshold that was used. Stored per outcome rather than resolved from the catalogue because a rule can be parameterised and the reader needs the value that actually decided this answer.
+   */
+  rule?: string;
+  /**
+   * Required reading for `not-assessable`: what evidence was missing. 'no remote-inbound RTP report in 1309s of samples' is useful; 'unavailable' is not.
+   */
+  why?: string;
+  observed?: ObservedValue[];
+  interval?: Interval;
+  /**
+   * Built-in issues that evidence this outcome. A failing check normally has at least one; a check with issues but no statistic is still `not-assessable`, because a detector firing is a report, not a measurement.
+   */
+  issues?: IssueRef[];
+  events?: EventRef[];
+  /**
+   * Where to look. Ordered most-specific first, so the UI's primary link is evidence[0].
+   */
+  evidence?: EvidenceRef[];
+}
+/**
+ * What a per-client check was evaluated against
+ *
+ * A client-scoped check has no `id`. A track- or connection-scoped one carries the id the existing client page already keys its sections on, which is how an evidence link lands on the right row rather than the right page.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
  * via the `definition` "subject".
  */
 export interface Subject {
   kind: SubjectKind;
-  id: OpaqueId;
+  id?: string;
+  media?: 'audio' | 'video';
 }
 /**
- * A pointer to an authorized logical source record
+ * One measured figure behind an outcome
  *
- * Never a credential and never a presigned URL. `sourceId` joins to a Source in the digest; the rest narrows to a record, a stat and an instant where those are known. Resolving one into a raw-evidence view goes through server authorization.
+ * What the rule actually read. `value` may be null: a check can fail on the ABSENCE of a figure (no remote report, a counter that reset) and the UI must show that absence rather than a zero. `threshold` is present only when the rule compares against one, so a reader can see the margin rather than take the verdict on trust.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "observedValue".
+ */
+export interface ObservedValue {
+  label: string;
+  value: number | string | null;
+  unit: Unit;
+  threshold?: number | null;
+}
+/**
+ * When the fault was observed. Absent on a pass, and absent where the rule is not interval-bounded.
+ */
+export interface Interval {
+  from: Instant;
+  to: Instant;
+}
+/**
+ * A built-in issue that evidences an outcome
+ *
+ * `type` is a key of CLIENT_ISSUE_TYPES. Deliberately only the type, the instant and the payload: the label, category, severity, meaning, implication, remedy, chart and highlight fields all live in that registry and are resolved at render time.
+ *
+ * Only the 37 built-in types may appear. Observer-generated detector findings, application events and enriched metadata are out of scope for this contract, and a producer that emits one here has broken the scope boundary rather than extended the schema.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "issueRef".
+ */
+export interface IssueRef {
+  type: string;
+  at: Instant;
+  payload?: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * A built-in client event that evidences an outcome
+ *
+ * `type` is a value of ClientEventTypes. Used mostly by continuity and coverage checks, where the evidence is a state change rather than a statistic.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "eventRef".
+ */
+export interface EventRef {
+  type: string;
+  at: Instant;
+  payload?: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * Where the UI should navigate to inspect this
+ *
+ * The contract's answer to "show me". It names an existing section and, where one applies, the id to select, the chart to open (an IssueChartKind) and the interval to scroll to. It never describes a new view: a digest that asks for a chart the dashboard does not have is a digest the dashboard cannot honour, so the chart vocabulary is the one already shipped.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
  * via the `definition` "evidenceRef".
  */
 export interface EvidenceRef {
-  sourceId: OpaqueId;
-  at: EpochMs | null;
-  recordId: OpaqueId | null;
-  statId: OpaqueId | null;
+  target: EvidenceTarget;
+  id?: string;
+  chart?: string;
+  interval?: Interval1;
 }
 /**
- * A pointer to a paginated detail resource
+ * A closed time interval
  *
- * `records` is the total the producer wrote, so a reader can show a count without paging to the end. A null ResourceRef on a digest means the detail is unavailable; a present ref with records 0 means it was evaluated and is empty.
+ * Both ends inclusive and both absolute. An interval is what makes a finding navigable — it is what the sample browser and the charts are scrolled to.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "resourceRef".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "interval".
  */
-export interface ResourceRef {
-  resourceId: OpaqueId;
-  records: Count;
+export interface Interval1 {
+  from: Instant;
+  to: Instant;
 }
 /**
- * Which code and configuration produced a figure
+ * One client session, addressable
  *
- * `processorVersion` and `policyId` identify immutable calculation code and configuration; figures from incompatible policies may not be combined. `sourceRevision` hashes the canonical input manifest together with policy identity, so it changes when a late record arrives or a source is corrected.
+ * The full triple. `clientId` is unique within a call and not globally, so a client session IS `callId` + `clientId` — and `roomId` is here because the dashboard's URL is /{roomId}/{callId}/{clientId}. Without it a drilldown list would have to open every call digest just to build a link.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "clientSessionRef".
+ */
+export interface ClientSessionRef {
+  roomId: string;
+  callId: string;
+  clientId: string;
+  displayName?: string;
+}
+/**
+ * One call, addressable
+ *
+ * `roomId` for the same reason as above: /{roomId}/{callId} is the route.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "callRef".
+ */
+export interface CallRef {
+  roomId: string;
+  callId: string;
+  startedAt?: Instant;
+  clientsFailed?: number;
+}
+/**
+ * Which code produced this, and when
+ *
+ * `rulesVersion` is the one to read when two digests disagree about the same call. Bumping it means the same inputs may now answer differently; existing digests are NOT regenerated, they keep the answer their rules gave, and the UI says which rules produced what it is showing.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
  * via the `definition` "provenance".
  */
 export interface Provenance {
-  processorVersion: OpaqueId;
-  policyId: OpaqueId;
-  sourceRevision: OpaqueId;
-  generatedAt: EpochMs;
+  schemaVersion: 2;
+  rulesVersion: string;
+  generatedAt: Instant;
 }
 /**
- * One input the digest was built from
- *
- * `revision` is an immutable version id or content hash, never a mutable path on its own — that is what makes a retry deterministic and a late arrival detectable.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "source".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "period".
  */
-export interface Source {
-  sourceId: OpaqueId;
-  kind: SourceKind;
-  logicalKey: OpaqueId;
-  revision: OpaqueId;
-}
-/**
- * How much of the expected input was actually read
- *
- * `gapDurationMs` is the union of missing time per participant instance, summed across participants — not a sum across every stream, which would multiply the same missing minute by the number of tracks. It is null when expected cadence or exposure cannot be established, which is not the same as zero.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "coverage".
- */
-export interface Coverage {
-  completeness: Completeness;
-  expectedSources: NullableCount;
-  processedSources: Count;
-  rejectedRecords: Count;
-  duplicateRecords: Count;
-  gapDurationMs: NullableDurationMs;
-  truncated: boolean;
-  warnings: ReasonCodes;
-}
-/**
- * Duration weights over an immutable bucket definition
- *
- * `weights[i]` is milliseconds of eligible time whose interval value fell in bucket i. The bucket edges live in the definition, not here, so a stored histogram cannot drift from the bounds it was built with. weights.length must equal upperBounds.length + 1 for the named definition — a cross-document rule the conformance suite checks.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "histogram".
- */
-export interface Histogram {
-  definitionId: OpaqueId;
+export interface Period {
+  kind: 'day' | 'month';
   /**
-   * @minItems 2
-   * @maxItems 64
+   * `YYYY-MM-DD` for a day, `YYYY-MM` for a month.
    */
-  weights: [DurationMs, DurationMs, ...DurationMs[]];
-}
-export interface MetricAggregate1 {
-  metricId: MetricId;
-  status: MetricStatus;
-  unavailableReasons: ReasonCodes;
-  validIntervals: Count;
-  eligibleDurationMs: NullableDurationMs;
-  measuredDurationMs: DurationMs;
-  numerator: FiniteNumber | null;
-  denominator: FiniteNumber | null;
-  min: FiniteNumber | null;
-  max: FiniteNumber | null;
-  distribution: Histogram | null;
-}
-/**
- * Assessed, impaired and unknown participant time for one category
- *
- * Assessed time is the union of intervals where the policy could evaluate the category. Impaired is the union of positive classifications inside assessed time. Unknown is eligible observed participant time outside assessed time — so impaired + unknown does not have to equal observed time, and assessed is the denominator the UI must divide by.
- *
- * For `any`: impaired is the union of known positive categories; assessed is that positive union plus the intervals where every applicable enabled category could be evaluated and none was impaired. A known positive therefore stays affected even when another category is unknown.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "impairmentExposure".
- */
-export interface ImpairmentExposure {
-  category: ImpairmentCategory;
-  assessedParticipantMs: DurationMs;
-  impairedParticipantMs: DurationMs;
-  unknownParticipantMs: DurationMs;
-}
-/**
- * Application join attempt outcomes
- *
- * Unavailable without a versioned application attempt feed; a peer connection is not a join attempt. When available the counts partition attempts exactly: succeeded + failed + canceled + pending + unknown = attempts, which the conformance suite checks because JSON Schema cannot.
- *
- * The default success KPI divides succeeded by (succeeded + failed); canceled, pending and unknown are shown beside it rather than folded in, since a cancelled attempt is not a failure of the service.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "joinAggregate".
- */
-export interface JoinAggregate {
-  status: CapabilityState;
-  attempts: NullableCount;
-  succeeded: NullableCount;
-  failed: NullableCount;
-  canceled: NullableCount;
-  pending: NullableCount;
-  unknown: NullableCount;
-}
-/**
- * Findings of one category over a period
- *
- * `raised` is additive by raise time; `activeAtEnd` is evaluated at the period boundary and is **not** additive — summing daily active-at-end counts into a month is the error this field's description exists to prevent.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "findingCount".
- */
-export interface FindingCount {
-  category: FindingCategory;
-  raised: Count;
-  activeAtEnd: Count;
-  truncated: boolean;
-}
-/**
- * One client instance over one call
- *
- * A participant is a client instance, not a unique human: the same person rejoining is two participants, and the dashboard may never present these counts as people.
- *
- * `dimensions` holds only values that were invariant for this participant. A dimension that changed — the selected TURN server, the serving SFU, a mid-call app context — is omitted here and represented through interval evidence, so that its cohort exposure can be split across the values actually held. Putting a changing value here would attribute the whole session to whichever value happened to be last.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "participantDigest".
- */
-export interface ParticipantDigest {
-  participantId: OpaqueId;
-  clientId: OpaqueId;
-  instanceId: OpaqueId1;
-  displayName: string | null;
+  id: string;
   /**
-   * Empty when membership intervals are unavailable — the capability map says why. Empty is not 'never present'.
-   *
-   * @maxItems 512
+   * UTC, always. Not configurable: a reporting day has to mean one thing across storage, aggregation and the page, and server-absolute time is the only definition that survives clients in other zones and a browser with a wrong clock.
    */
-  membership: TimeRange[];
-  dimensions: {
-    /**
-     * This interface was referenced by `undefined`'s JSON-Schema definition
-     * via the `patternProperty` "^.*$".
-     */
-    [k: string]: string | null;
-  };
-  capabilities: CapabilityMap;
-  observedDurationMs: DurationMs;
-  metrics: MetricAggregates;
-  impairments: ImpairmentExposures;
-  [k: string]: unknown;
-}
-export interface StreamDigest1 {
-  streamId: OpaqueId;
-  participantId: OpaqueId;
-  peerConnectionId: OpaqueId;
-  trackId: OpaqueId | null;
+  timezone: 'UTC';
   /**
-   * Set for a simulcast encoding. Encodings are separate streams: their bitrates are alternatives, not layers to add together.
+   * True while the period can still gain data — the current day, or the current month. A provisional summary is correct for what it has read and is expected to change, which is a different statement from incomplete.
    */
-  encodingId: OpaqueId | null;
-  direction: 'inbound' | 'outbound';
-  mediaKind: 'audio' | 'video';
-  epoch: OpaqueId;
-  publisherStreamId: OpaqueId | null;
+  provisional?: boolean;
+}
+/**
+ * What this was built from, and what was missed
+ *
+ * The field that makes a partial period impossible to misread as an empty one. `complete` is false whenever anything was found and not read, or expected and not found.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "sources".
+ */
+export interface Sources {
   /**
-   * What justified the publisher link. Null exactly when `publisherStreamId` is null.
+   * `calls` for a day, `days` for a month.
    */
-  relationshipSource: ReasonCode | null;
-  metrics: MetricAggregates;
-  [k: string]: unknown;
-}
-/**
- * A selected ICE path over an interval
- *
- * One record per interval during which a transport's selected candidate pair held. A changed relay or protocol is a new record, not a mutated one, so cohort exposure can be attributed to the server actually serving at the time.
- *
- * `relayed`, `relayServer`, `protocol` and `relayProtocol` are null when the producer's retained on-change metadata cannot establish them. Absence of a change notification means unchanged only where the producer's semantics say so; otherwise it means unknown.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "pathDigest".
- */
-export interface PathDigest {
-  pathId: OpaqueId;
-  participantId: OpaqueId;
-  peerConnectionId: OpaqueId;
-  transportId: OpaqueId;
-  range: TimeRange;
-  selectedCandidatePairId: OpaqueId | null;
-  relayed: boolean | null;
-  relayServer: string | null;
-  protocol: string | null;
-  relayProtocol: string | null;
-  evidence: EvidenceRefs;
-  [k: string]: unknown;
-}
-export interface TimelineRecord1 {
-  recordId: OpaqueId;
-  subject: Subject;
-  range: TimeRange1;
-  kind: 'measurement' | 'state' | 'event' | 'gap';
-  metricId: MetricId | null;
-  value: FiniteNumber | null;
+  kind: 'calls' | 'days';
+  found: number;
+  read: number;
+  failed: number;
+  complete: boolean;
   /**
-   * Valid only on a measurement. Carried so a reader can interpret a bucket value and recompute the ratio the contract defines, rather than trusting a pre-divided number of unknown provenance.
+   * Why each unread source was unread. Distinguishes a missing object, an invalid one, and one written by a schema version this build does not implement — three different operator actions.
    */
-  numerator: FiniteNumber | null;
-  denominator: FiniteNumber | null;
-  state: string | null;
-  validity: 'valid' | 'missing' | 'stale' | 'reset' | 'gap';
-  evidence: EvidenceRefs;
-  [k: string]: unknown;
-}
-/**
- * A half-open interval [startAt, endAt)
- *
- * Half-open so adjacent intervals tile without double-counting the shared instant — which is what keeps a union of observation intervals from over-reporting exposure. An event may use startAt === endAt and adds no duration.
- */
-export interface TimeRange1 {
-  startAt: EpochMs;
-  endAt: EpochMs;
-}
-/**
- * An observation or a hypothesis about a subject
- *
- * `certainty` is the field that must never be flattened in the UI: an observation is something a detector measured, a hypothesis is something a rule inferred, and presenting the second as the first is how a dashboard invents a root cause.
- *
- * `resolvedAt` stays null while unresolved, and an unresolved finding is **not** proof of continuous impairment up to the query end — exposure ends at `lastObservedAt`, the last assessed evidence. A detector whose inputs went away keeps its state; that state is not evidence that the problem continued.
- *
- * `origin` preserves where the judgement came from. Existing client and observer detectors keep their own lifecycle and policy rather than being relabelled as digest rules, which is why `algorithmId` is required on every finding.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "finding".
- */
-export interface Finding {
-  findingId: OpaqueId2;
-  category: FindingCategory;
-  type: string;
-  severity: 'info' | 'warning' | 'critical';
-  subject: Subject;
+  failures?: SourceFailure[];
   /**
-   * @maxItems 1024
+   * Months only: days in the month with no summary at all. A day that genuinely had no calls still gets a summary, so a day listed here is an unprocessed day, not a quiet one.
    */
-  affectedParticipantIds: OpaqueId[];
-  startedAt: EpochMs;
-  resolvedAt: EpochMs | null;
-  lastObservedAt: EpochMs1;
-  origin: 'client-detector' | 'observer-detector' | 'digest-rule';
-  certainty: 'observation' | 'hypothesis';
+  missingDays?: ReportingDay[];
+}
+/**
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "sourceFailure".
+ */
+export interface SourceFailure {
   /**
-   * Null when the algorithm does not express one. A hypothesis without a confidence is still a hypothesis.
+   * The callId or the day id that could not be read.
    */
-  confidence: ('low' | 'medium' | 'high') | null;
-  algorithmId: OpaqueId;
-  evidence: EvidenceRefs;
-  [k: string]: unknown;
+  id: string;
+  reason:
+    'not-found' | 'invalid-json' | 'schema-invalid' | 'unsupported-schema-version' | 'read-failed';
+  detail?: string;
 }
 /**
- * Exposure and metrics for one dimension value
- *
- * Exposure is assigned to the value held during each interval, so a dimension that changes mid-call splits its exposure across values rather than attributing all of it to the last one. Values of a single-valued dimension partition the eligible exposure; multi-valued SFU participation is assigned by an explicit path or ownership policy and must not duplicate overall participant time. Ambiguous intervals go to the null cohort.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "cohortAggregate".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "totals".
  */
-export interface CohortAggregate {
-  dimension: Dimension;
+export interface Totals {
   /**
-   * Null is the unknown cohort — a real population, not an absence to drop.
+   * Distinct callIds read. A union, so a rebuild cannot inflate it.
    */
-  value: string | null;
-  observedParticipantMs: DurationMs;
-  impairments: ImpairmentExposures;
-  metrics: MetricAggregates;
-}
-/**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "periodBucket".
- */
-export interface PeriodBucket {
-  range: TimeRange;
-  completeness: Completeness;
-  callsStarted: Count;
-  observedParticipantMs: DurationMs;
-  impairments: ImpairmentExposures;
-}
-/**
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "rankedCall".
- */
-export interface RankedCall {
-  callId: OpaqueId;
-  roomId: OpaqueId | null;
-  digestRevision: OpaqueId3;
-  startedAt: EpochMs | null;
-  impairedParticipantMs: DurationMs;
-  assessedParticipantMs: DurationMs1;
-  completeness: Completeness;
-}
-/**
- * The pointer to a subject's current revision
- *
- * Written **last**: the producer writes immutable details and the digest, validates them, and only then publishes the manifest atomically. That ordering is the whole concurrency story — a reader either sees the old generation or the new one, never a half-written one, and a failed reprocess leaves the previous usable revision in place.
- *
- * The manifest is the only mutable object in the analytics tree. Everything it points at is immutable, which is what lets a reader pin a revision and page it safely while a new generation is being written beside it.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "manifest".
- */
-export interface Manifest {
-  schemaVersion: 1;
-  subject: {
-    kind: 'call' | 'day' | 'month';
-    id: OpaqueId;
-  };
-  currentRevision: OpaqueId;
+  calls: number;
   /**
-   * Where the current revision's digest lives, relative to the analytics root. A storage key, resolved server-side: it is never handed to a browser and no client-supplied value is ever substituted for it.
+   * Distinct callId+clientId pairs.
    */
-  digestKey: string;
-  provenance: Provenance;
+  clientSessions: number;
+  clientSessionsAssessed: number;
+  observedSeconds?: number;
+  assessedSeconds?: number;
+  unassessedSeconds?: number;
   /**
-   * The revision this one replaced, where known. Retention of old revisions is a separate policy that must respect active readers.
+   * Summed call wall-clock duration. Kept separate from the client-second figures above on purpose: they are not comparable and a page that mixes them reports impaired time exceeding elapsed time.
    */
-  supersedes?: OpaqueId | null;
-  [k: string]: unknown;
+  callSeconds?: number;
 }
 /**
- * One page of a detail or search resource
- *
- * `revision` is echoed so a reader can detect mid-read drift rather than discovering it as inconsistent numbers. `nextCursor: null` ends pagination — an empty `items` with a non-null cursor is legal and means 'keep asking', which is how a server that filters server-side avoids guessing a page size.
- *
- * Cursors are opaque and bind tenant, filters and revision together. A cursor replayed against different filters or a newer revision is rejected explicitly, never silently reinterpreted.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "page".
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "periodCheck".
  */
-export interface Page {
-  revision: OpaqueId;
+export interface PeriodCheck {
+  id: string;
+  counts: OutcomeCounts1;
   /**
-   * @maxItems 500
+   * Distinct calls with at least one failing client session. A union over callId, never a sum of per-day values.
    */
-  items: unknown[];
-  nextCursor: string | null;
-}
-/**
- * Default and maximum page sizes, as data so both implementations agree. A server may return fewer than asked.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "pageLimits".
- */
-export interface PageLimits {
-  default: 100;
-  maximum: 500;
-}
-/**
- * One row of a call search result
- *
- * Deliberately thin: enough to rank, judge completeness and navigate, and nothing that would tempt a reader to compute with it. `digestRevision` pins what the row was derived from, so following it cannot land on figures from a newer generation than the row.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "callSearchRow".
- */
-export interface CallSearchRow {
-  callId: OpaqueId;
-  roomId: OpaqueId | null;
-  digestRevision: OpaqueId;
-  startedAt: EpochMs | null;
-  endedAt: EpochMs | null;
-  observedParticipantMs: DurationMs;
-  impairment: ImpairmentExposure1;
-  completeness: Completeness;
-  [k: string]: unknown;
-}
-/**
- * Assessed, impaired and unknown participant time for one category
- *
- * Assessed time is the union of intervals where the policy could evaluate the category. Impaired is the union of positive classifications inside assessed time. Unknown is eligible observed participant time outside assessed time — so impaired + unknown does not have to equal observed time, and assessed is the denominator the UI must divide by.
- *
- * For `any`: impaired is the union of known positive categories; assessed is that positive union plus the intervals where every applicable enabled category could be evaluated and none was impaired. A known positive therefore stays affected even when another category is unknown.
- */
-export interface ImpairmentExposure1 {
-  category: ImpairmentCategory;
-  assessedParticipantMs: DurationMs;
-  impairedParticipantMs: DurationMs;
-  unknownParticipantMs: DurationMs;
-}
-/**
- * The supported call-search filters
- *
- * Exactly the filters the contract names. The UI advertises which combinations are supported rather than offering every pairing and quietly dropping the ones the server cannot answer; combined cohort filters go through this query and are never inferred from marginal cohort totals.
- *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
- * via the `definition` "callSearchQuery".
- */
-export interface CallSearchQuery {
-  range?: TimeRange;
-  callId?: OpaqueId;
-  roomId?: OpaqueId;
-  clientId?: OpaqueId;
-  impairmentCategory?: ImpairmentCategory;
+  callsAffected?: number;
   /**
-   * @maxItems 8
+   * Summed assessed client-seconds inside failing intervals. Absent where the rule has no interval, and absent in a month if any contributing day lacked it — a partial sum would read as a smaller problem.
    */
-  cohorts?:
-    | []
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ]
-    | [
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        },
-        {
-          dimension: Dimension;
-          value: string | null;
-        }
-      ];
-  completeness?: Completeness;
-  /**
-   * The filter that makes calls excluded from the worst-call ranking — those with no assessed evidence — discoverable rather than invisible.
-   */
-  missingDataOnly?: boolean;
-  limit?: number;
-  cursor?: string;
-}
-export interface ReadResult1 {
-  state: ReadState;
-  revision?: OpaqueId | null;
-  /**
-   * Present when the served revision is usable but known to lag. Separate from `state` on purpose.
-   */
-  staleness?: {
-    generatedAt: EpochMs;
-    reasons: ReasonCodes;
-  };
-  reasons?: ReasonCodes;
-  schemaVersion?: number;
-  document?: unknown;
+  failedSeconds?: number | null;
 }
 /**
- * Call digest, version 1
+ * How a roll-up answered, with its denominator
  *
- * One call's identity, coverage, usage, metric aggregates, finding counts and references to paginated detail.
+ * `evaluated` is the denominator and equals the sum of the four. It is stored rather than left to the reader because a reader that adds the four to get it will be wrong the day a fifth outcome exists.
+ */
+export interface OutcomeCounts1 {
+  passed: number;
+  failed: number;
+  notAssessable: number;
+  notApplicable: number;
+  evaluated: number;
+}
+/**
+ * Client sessions by what their evidence amounts to
  *
- * This is a saved fact, not a view: everything in it was computed by the processor from archived sources, and a reader does no counter arithmetic to render it. The detail refs are the only way into per-participant, per-stream, per-path, timeline and finding data, and each is read against this digest's `revision` — a reader that pins one revision and pages another has spliced two generations together.
+ * Disjoint. These four sum to `totals.clientSessions`, which is the only sum that is valid here — adding any subset to get 'affected clients' double-counts, because a session is classified once by its strongest evidence.
  *
- * This interface was referenced by `DigestContractV1`'s JSON-Schema
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "classificationCounts".
+ */
+export interface ClassificationCounts {
+  qoeSymptom: number;
+  qosOnly: number;
+  noIssueWithinCoverage: number;
+  insufficientEvidence: number;
+}
+/**
+ * Quality across the period
+ *
+ * Hour buckets for a day, day buckets for a month. Each bucket carries its own denominator so an hour with two sessions is not drawn as confidently as an hour with two hundred.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "trend".
+ */
+export interface Trend {
+  bucket: 'hour' | 'day';
+  buckets: TrendBucket[];
+}
+/**
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "trendBucket".
+ */
+export interface TrendBucket {
+  at: Instant;
+  clientSessions: number;
+  /**
+   * Sessions with at least one failing check. Assigned to the bucket the session STARTED in, matching the call-to-day rule, so one session is counted once.
+   */
+  clientSessionsFailed: number;
+  clientSessionsAssessed?: number;
+}
+/**
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "affectedByCheck".
+ */
+export interface AffectedByCheck {
+  id: string;
+  calls?: CallRef[];
+  /**
+   * The full roomId+callId+clientId triple, so the UI builds /{roomId}/{callId}/{clientId} without opening a single call digest.
+   */
+  clientSessions?: ClientSessionRef[];
+  /**
+   * True when the lists above were capped. A capped list is a navigation aid, not a count — read `counts` and `callsAffected` for the numbers.
+   */
+  truncated?: boolean;
+}
+/**
+ * Call digest, version 2
+ *
+ * One completed call's quality checks, at call level and per client session, with the evidence needed to inspect each outcome.
+ *
+ * Stored at `digests/calls/{callId}.json`. `callId` alone is the key because it is a UUID and therefore globally unique; `roomId` is carried inside because the dashboard's route is /{roomId}/{callId} and a reader holding only a digest must still be able to link back.
+ *
+ * This one file serves both pages. The call page reads `checks` and `coverage`; a client page reads its own entry in `clients`. The roll-up in `checks` is computed from `clients[].checks` in the same pass, so the two cannot disagree — which is the whole reason there is no separate client digest.
+ *
+ * What is NOT here: no metric warehouse, no histograms, no scores. A check answers a question and points at the evidence; anything a reader wants beyond that is in the raw samples, which stay available.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
  * via the `definition` "callDigest".
  */
 export interface CallDigest {
-  kind: 'call-digest';
-  /**
-   * Major version. A reader that does not support this exact value must refuse the document rather than read it field by field — a field whose meaning changed would otherwise render as if it had not.
-   */
-  schemaVersion: 1;
-  digestId: OpaqueId;
-  tenantId: OpaqueId;
-  callId: OpaqueId;
-  /**
-   * Null when the sources never carried one. A room id may be a UUID with no relationship to the call id, so nothing may be inferred from its text.
-   */
-  roomId: OpaqueId | null;
-  revision: OpaqueId4;
   provenance: Provenance;
-  /**
-   * An open call is provisional even when every currently known file was processed: more samples may still arrive. `unknown` means no lifecycle evidence of sufficient authority was found.
-   */
-  lifecycle: 'open' | 'closed' | 'unknown';
-  /**
-   * The known call span — not the archive write time, and not a summary's finalization time. Null when lifecycle evidence cannot establish it. First and last observed samples may bound observed exposure but do not establish authoritative join or leave times.
-   */
-  range: TimeRange | null;
-  coverage: Coverage;
-  capabilities: CapabilityMap1;
-  /**
-   * The immutable input inventory this generation was built from. Its hash plus policy identity is `provenance.sourceRevision`, which is what makes a retry deterministic and a late arrival detectable.
-   *
-   * @maxItems 4096
-   */
-  sources: Source[];
-  usage: {
-    participantSessions: NullableCount1;
-    peakConcurrentParticipants: NullableCount2;
-    observedParticipantMs: DurationMs2;
-    connectedParticipantMs: NullableDurationMs1;
-    callDurationMs: NullableDurationMs;
-  };
-  joins: JoinAggregate;
-  impairments: ImpairmentExposures;
-  metrics: MetricAggregates;
-  findingCounts: FindingCounts;
-  participants: NullableResourceRef;
-  streamDetails: NullableResourceRef;
-  pathDetails: NullableResourceRef;
-  timeline: NullableResourceRef;
-  findings: NullableResourceRef;
-  [k: string]: unknown;
+  call: CallIdentity;
+  coverage: CallCoverage;
+  checks: CallLevelRollUpOneEntryPerCatalogueCheck;
+  clients: ClientDigest[];
 }
 /**
- * Must contain every key the contract requires (see registry/capabilities.v1.json, which both implementations and the conformance suite read). Additional keys are allowed.
+ * Period summary, version 2
+ *
+ * One reporting day or month, aggregated from saved digests. Stored at `digests/daily-summaries/{yyyy-mm-dd}.json` and `digests/monthly-summaries/{yyyy-mm}.json`.
+ *
+ * A day aggregates call digests; a month aggregates DAY SUMMARIES, not calls. That hierarchy is what keeps a month cheap, and it is also why `sources` has to say how complete it was: a month built from 28 of 31 days is not a quiet month.
+ *
+ * The aggregation rules this shape exists to enforce:
+ *
+ * - Every count names its denominator (`outcomeCounts.evaluated`). No bare rates are stored; the UI divides, and can therefore show the denominator beside the figure.
+ * - Affected call and client counts are UNIONS over identity, so re-reading a source cannot double-count.
+ * - A month sums numerators and denominators from its days. It never averages daily percentages, because a 2% day with 10 sessions and a 2% day with 10,000 are not equal evidence.
+ * - Percentiles and distributions are not aggregated at all unless they are mergeable. Where a figure cannot be merged honestly the field is absent and the UI shows it unavailable.
+ * - Classification buckets are disjoint and are never summed to get 'affected clients'.
+ *
+ * This interface was referenced by `DigestContractV2`'s JSON-Schema
+ * via the `definition` "periodSummary".
  */
-export interface CapabilityMap1 {
-  [k: string]: Capability;
-}
-export interface PeriodDigest1 {
-  kind: 'period-digest';
-  schemaVersion: 1;
-  tenantId: OpaqueId;
-  period: 'day' | 'month';
-  /**
-   * `YYYY-MM-DD` for a day, `YYYY-MM` for a month, UTC. Validated against `period` below, and round-tripped through a real date by the conformance suite — `2026-02-31` matches the pattern and is not a day.
-   */
-  id: string;
-  range: TimeRange2;
-  revision: OpaqueId;
+export interface PeriodSummary {
   provenance: Provenance;
-  completeness: Completeness;
+  period: Period;
+  sources: Sources;
+  totals: Totals;
+  checks: PeriodCheck[];
+  classification?: ClassificationCounts;
+  trend?: Trend;
   /**
-   * Classifies every indexed candidate call. readable + pending + failed + unknown must equal indexedCalls, which the conformance suite checks. A readable digest may itself be partial, so these counts say nothing about measurement quality.
-   *
-   * Child periods are the month's expected and included UTC days, or a day's 24 expected hours and the hours whose input inventory was successfully evaluated. A successfully evaluated empty bucket is a verified zero; an unevaluated one must never be presented as verified absence of traffic.
+   * Drilldown. For each check that anything failed, which calls and which client sessions to open.
    */
-  coverage: {
-    indexedCalls: Count;
-    readableCallDigests: Count;
-    pendingCallDigests: Count;
-    failedCallDigests: Count;
-    unknownCallDigests: Count;
-    expectedChildPeriods: Count;
-    includedChildPeriods: Count;
-  };
-  totals: {
-    callsStarted: Count1;
-    callsWithExposure: Count2;
-    participantSessionsStarted: Count3;
-    observedParticipantMs: DurationMs3;
-    connectedParticipantMs: NullableDurationMs;
-    callExposureMs: DurationMs4;
-    largestCallPeakParticipants: NullableCount3;
-  };
-  joins: JoinAggregate1;
-  impairments: ImpairmentExposures;
-  metrics: MetricAggregates;
-  findingCounts: FindingCounts1;
-  /**
-   * Marginal totals per dimension value. Null is the unknown cohort and is never discarded. Dimensions may not be cross-combined from these margins — a combined filter requires the server's call/participant contribution query, and the UI advertises which combinations are supported.
-   *
-   * @maxItems 2048
-   */
-  cohorts: CohortAggregate[];
-  /**
-   * A day's 24 UTC hours, or a month's UTC days. Unavailable buckets keep their own completeness so a chart can draw a gap rather than interpolate through it.
-   *
-   * @maxItems 31
-   */
-  buckets: PeriodBucket[];
-  /**
-   * At most 20, ordered by impaired participant milliseconds descending, then impairment share descending, then call id ascending. Exposure clipped to this period, using all-category union exposure rather than a sum of categories. Calls with no assessed evidence are excluded and stay discoverable through missing-data filters. A period with no observed impairment has an empty ranking, and the UI must not substitute a ranking of its own.
-   *
-   * @maxItems 20
-   */
-  worstCalls:
-    | []
-    | [RankedCall]
-    | [RankedCall, RankedCall]
-    | [RankedCall, RankedCall, RankedCall]
-    | [RankedCall, RankedCall, RankedCall, RankedCall]
-    | [RankedCall, RankedCall, RankedCall, RankedCall, RankedCall]
-    | [RankedCall, RankedCall, RankedCall, RankedCall, RankedCall, RankedCall]
-    | [RankedCall, RankedCall, RankedCall, RankedCall, RankedCall, RankedCall, RankedCall]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ]
-    | [
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall,
-        RankedCall
-      ];
-  callSearchResourceId: OpaqueId5;
-  [k: string]: unknown;
-}
-/**
- * A half-open interval [startAt, endAt)
- *
- * Half-open so adjacent intervals tile without double-counting the shared instant — which is what keeps a union of observation intervals from over-reporting exposure. An event may use startAt === endAt and adds no duration.
- */
-export interface TimeRange2 {
-  startAt: EpochMs;
-  endAt: EpochMs;
-}
-/**
- * Application join attempt outcomes
- *
- * Unavailable without a versioned application attempt feed; a peer connection is not a join attempt. When available the counts partition attempts exactly: succeeded + failed + canceled + pending + unknown = attempts, which the conformance suite checks because JSON Schema cannot.
- *
- * The default success KPI divides succeeded by (succeeded + failed); canceled, pending and unknown are shown beside it rather than folded in, since a cancelled attempt is not a failure of the service.
- */
-export interface JoinAggregate1 {
-  status: CapabilityState;
-  attempts: NullableCount;
-  succeeded: NullableCount;
-  failed: NullableCount;
-  canceled: NullableCount;
-  pending: NullableCount;
-  unknown: NullableCount;
+  affected?: AffectedByCheck[];
 }
