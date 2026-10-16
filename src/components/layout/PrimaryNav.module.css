@@ -1,0 +1,58 @@
+/*
+ * Two tabs above the breadcrumb. Uses the theme's own tokens, so it follows the
+ * existing light and dark themes with no second palette.
+ */
+
+.nav {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.item,
+.itemActive {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  /* A transparent border on the inactive item, so becoming active does not
+     change the element's height and shift the row by two pixels. */
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.item {
+  color: var(--text-muted);
+}
+
+.item:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.itemActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Keyboard focus has to be visible on both themes and must not rely on the
+   underline, which the active item already uses for a different meaning. */
+.item:focus-visible,
+.itemActive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (max-width: 480px) {
+  .item,
+  .itemActive {
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 0.4rem;
+  }
+}

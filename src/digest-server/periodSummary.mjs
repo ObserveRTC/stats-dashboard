@@ -217,7 +217,12 @@ export function buildDaySummary({ day, read, failures = [], found, generatedAt =
  * reconstructs a figure a day did not carry.
  */
 export function buildMonthSummary({ month, read, failures = [], generatedAt = Date.now(), provisional = false }) {
-  const expected = daysInMonth(month);
+  // Only days that have HAPPENED can be missing. For the current month the
+  // remaining days are not unprocessed, they are in the future, and listing
+  // them as "never processed" turns an ordinary mid-month state into a backlog
+  // that looks like an outage. Bounded at the generation day, inclusive.
+  const today = new Date(generatedAt).toISOString().slice(0, 10);
+  const expected = daysInMonth(month).filter((d) => d <= today);
   const present = new Set(read.map((d) => d.period.id));
   const missingDays = expected.filter((d) => !present.has(d) && !failures.some((f) => f.id === d));
 

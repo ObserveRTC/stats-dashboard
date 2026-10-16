@@ -1,109 +1,126 @@
-import { getDigestJson, listDigestObjectsDeep } from './s3.ts';
-import {
-  digestDayKey,
-  digestMonthFolder,
-  digestMonthKey,
-  normalizeDigest,
-  parseDigestDayKey,
-  type DigestDocument,
-} from '../schema/Digest.ts';
-import { rollUpMonth } from '../utils/digestModel.ts';
-
 /**
- * Reading a period's digest out of the digest root.
+ * Reading saved digests out of the digest root. **Server only.**
  *
- * A day is one GET. A month is one GET, or at worst the ≤31 day objects folded
- * together while its roll-up is being caught up. Nothing here scales with how
- * many calls there were, which is the entire point of the digest root existing.
+ * Three documents, one GET each, at the keys the digest server writes:
+ *
+ *   digests/calls/<callId>.json
+ *   digests/daily-summaries/<yyyy-mm-dd>.json
+ *   digests/monthly-summaries/<yyyy-mm>.json
  *
  * ## The dashboard reads; it does not produce
  *
- * Whatever writes the digests — a queue-driven processor, a scheduled job, a
- * script somebody runs by hand — is outside this repository and is free to
- * change. The only coupling is the key layout and the document shape, both
- * stated in `schema/Digest.ts` and `docs/storage-layout.md`.
+ * Nothing here counts calls, folds days or computes a check. An earlier design
+ * had a path that did, for a period nothing had digested yet, and it was a
+ * mistake twice over: two implementations of every figure with no way to keep
+ * them agreeing, and the page that reports a slow system became the slowest
+ * page to load. A period with no summary reports exactly that, and the fix is
+ * upstream.
  *
- * So there is no path here that counts calls. An earlier design had one, for a
- * period nothing had digested yet, and it was a mistake twice over: it meant
- * two implementations of every figure with no way to keep them agreeing, and it
- * made the page that reports a slow system the slowest page to load. A period
- * with no digest reports exactly that, and the fix is upstream.
+ * That is also why this module is thin to the point of looking pointless. Its
+ * whole job is to turn "an object may or may not be there, and may or may not
+ * be a document this build understands" into one of five states the UI can
+ * render differently. The validation lives in `src/digest/server.ts`.
  */
 
-export type DigestSource = 'stored' | 'rolled';
+import { getDigestJson } from './s3.ts';
+import {
+  parseCallDigest,
+  parsePeriodSummary,
+  type ReadResult,
+} from '../digest/server.ts';
+import type { CallDigest, PeriodSummary } from '../digest/types.ts';
 
-export interface DigestResult {
-  /** The period's digest, or null when nothing has been written for it. */
-  doc: DigestDocument | null;
-  source: DigestSource | null;
-}
+const callKey = (callId: string) => `calls/${callId}.json`;
+const dayKey = (day: string) => `daily-summaries/${day}.json`;
+const monthKey = (month: string) => `monthly-summaries/${month}.json`;
 
-async function readStored(
-  key: string,
-  period: 'day' | 'month',
-  id: string,
-): Promise<DigestDocument | undefined> {
-  const raw = await getDigestJson(key);
-  if (raw === undefined) return undefined;
-
-  const doc = normalizeDigest(raw);
-  if (!doc) {
-    // A digest that exists and cannot be read is worth a line: it means
-    // whatever writes them is writing something this dashboard does not
-    // understand, which is a version mismatch and not an empty day.
-    console.warn('[digest] %s is not a readable digest document', key);
-    return undefined;
-  }
-  if (doc.period !== period || doc.id !== id) {
-    console.warn('[digest] %s holds %s %s — filed under the wrong key', key, doc.period, doc.id);
-    return undefined;
-  }
-  return doc;
-}
-
-export async function loadDayDigest(day: string): Promise<DigestResult> {
-  const stored = await readStored(digestDayKey(day), 'day', day);
-  return stored ? { doc: stored, source: 'stored' } : { doc: null, source: null };
-}
-
-export async function loadMonthDigest(month: string): Promise<DigestResult> {
-  const stored = await readStored(digestMonthKey(month), 'month', month);
-  if (stored) return { doc: stored, source: 'stored' };
-
-  // A month's roll-up is written after its days, so there is a window — longer
-  // after a backfill — where the days exist and the month does not. Folding
-  // them costs at most 31 small GETs and reads nothing but digests.
-  const rolled = await rollFromStoredDays(month);
-  return rolled ? { doc: rolled, source: 'rolled' } : { doc: null, source: null };
+/**
+ * A path segment that cannot escape the digest root.
+ *
+ * These ids arrive from a URL, so this is a boundary and not a formality.
+ * `getDigestJson` prefixes but does not normalize, so a `..` segment would
+ * otherwise reach outside the root this deployment is confined to.
+ */
+function isSafeId(value: string): boolean {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 200 &&
+    !value.includes('/') &&
+    !value.includes('\\') &&
+    value !== '.' &&
+    value !== '..' &&
+    // eslint-disable-next-line no-control-regex
+    !/[\u0000-\u001f\u007f]/.test(value)
+  );
 }
 
 /**
- * The month's day objects, folded. `undefined` when there are none.
+ * Read one object and hand it to a parser.
  *
- * Undefined rather than an empty month, because "no day objects were written"
- * and "a month in which no calls happened" are different claims and this cannot
- * tell them apart. Saying the second when only the first is known is how a
- * dashboard reports an outage as a quiet month.
+ * A read that throws becomes `failed` rather than propagating. Storage being
+ * unreachable and a digest being absent are different things on screen — one
+ * is worth a retry button and the other is not — and an exception here would
+ * collapse them into the same 500.
  */
-async function rollFromStoredDays(month: string): Promise<DigestDocument | undefined> {
-  const keys = (await listDigestObjectsDeep(digestMonthFolder(month)))
-    .map((o) => o.key)
-    // Only day objects. Anything else in the folder is somebody else's and must
-    // not be read as a day — a month roll-up found in here, for instance, would
-    // double every total if it were folded in as one.
-    .filter((key) => parseDigestDayKey(key) !== null);
-
-  if (keys.length === 0) return undefined;
-
-  const docs = await Promise.all(
-    keys.map(async (key) => {
-      const raw = await getDigestJson(key);
-      return raw === undefined ? null : normalizeDigest(raw);
-    }),
-  );
-
-  const days = docs.filter((d): d is DigestDocument => d !== null && d.period === 'day');
-  if (days.length === 0) return undefined;
-
-  return rollUpMonth(days, month);
+async function read<T>(
+  key: string,
+  parse: (raw: unknown) => ReadResult<T>,
+): Promise<ReadResult<T>> {
+  let raw: unknown;
+  try {
+    raw = await getDigestJson(key);
+  } catch (err) {
+    // getDigestJson throws on an object that exists and does not parse, which
+    // is `invalid`, not `failed`: there is something there and it is wrong.
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('not valid JSON')) {
+      return { state: 'invalid', reason: message };
+    }
+    console.error('[digest] read failed: %s', message);
+    return { state: 'failed', reason: message };
+  }
+  return parse(raw);
 }
+
+export function loadCallDigest(callId: string): Promise<ReadResult<CallDigest>> {
+  if (!isSafeId(callId)) {
+    return Promise.resolve({ state: 'invalid', reason: 'callId is not a single safe path segment' });
+  }
+  return read(callKey(callId), parseCallDigest);
+}
+
+export function loadDaySummary(day: string): Promise<ReadResult<PeriodSummary>> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return Promise.resolve({ state: 'invalid', reason: 'day must be YYYY-MM-DD' });
+  }
+  return read(dayKey(day), parsePeriodSummary);
+}
+
+export function loadMonthSummary(month: string): Promise<ReadResult<PeriodSummary>> {
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return Promise.resolve({ state: 'invalid', reason: 'month must be YYYY-MM' });
+  }
+  return read(monthKey(month), parsePeriodSummary);
+}
+
+export function loadPeriodSummary(
+  period: 'day' | 'month',
+  id: string,
+): Promise<ReadResult<PeriodSummary>> {
+  return period === 'day' ? loadDaySummary(id) : loadMonthSummary(id);
+}
+
+/**
+ * The reporting day for a moment, UTC.
+ *
+ * Exported so a route and a component agree on "today" without either doing
+ * date arithmetic. UTC because the contract's reporting day is UTC: a browser
+ * in UTC+13 asking for its own "today" would otherwise be handed a day the
+ * processor has not folded yet, and read the absence as a quiet day.
+ */
+export const reportingDay = (at: number | Date = Date.now()): string =>
+  new Date(at).toISOString().slice(0, 10);
+
+export const reportingMonth = (at: number | Date = Date.now()): string =>
+  new Date(at).toISOString().slice(0, 7);

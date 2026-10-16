@@ -6,7 +6,6 @@ import { useAppStore } from '../stores/index.ts';
 import { RoomIdInput } from '../components/layout/RoomIdInput.tsx';
 import { IdBadge } from '../components/sections/IdBadge.tsx';
 import { StorageStatusNotice } from '../components/layout/StorageStatusNotice.tsx';
-import { DigestPanel } from '../components/digest/DigestPanel.tsx';
 import { LoadingSpinner } from '../components/layout/LoadingSpinner.tsx';
 import { addToRoomIdHistory } from '../utils/roomIdHistory.ts';
 import { fetchRooms } from '../api/client.ts';
@@ -78,7 +77,6 @@ export function HomePage() {
           open before you could find out. Each period is already added up in
           the digest root, so this is one GET however busy the day was.
           Room browsing stays below for when you already know where to look. */}
-      <DigestPanel />
 
       {/* Jump input — always visible */}
       <div className={styles.jumpBox}>

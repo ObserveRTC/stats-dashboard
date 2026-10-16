@@ -34,8 +34,13 @@ export function Breadcrumbs() {
     })),
   ];
 
-  // Only show breadcrumbs when we're deeper than home
+  // Only show breadcrumbs when we're deeper than home.
   if (segments.length < 1) return null;
+
+  // /calls is a primary destination, not a level: the nav above already marks
+  // it, and a crumb for it would be labelled "roomId: calls" by the positional
+  // labels below, which is a lie about what that segment is.
+  if (segments[0] === 'calls' && segments.length === 1) return null;
 
   return (
     <nav className={styles.nav} aria-label="Breadcrumb">
