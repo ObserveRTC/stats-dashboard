@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CallSession, CallSummary, MediasoupRouterSample } from '../../api/types.ts';
 import { buildDashboardModel } from '../../utils/dashboardModel.ts';
 import { useClientLoadStore } from '../../stores/clientLoadStore.ts';
@@ -51,6 +51,12 @@ export function CallDashboard({
 }) {
   // Subscribed rather than read once: each row settles on its own, so the
   // model rebuilds as loads land instead of waiting for all of them.
+  const [activeSection, setActiveSection] = useState('call-summary');
+  useEffect(() => {
+    const sync = () => setActiveSection(window.location.hash.slice(1) || 'call-summary');
+    sync(); window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
   const digest = useCallDigest(roomId, callId);
   const ready = digest.state === 'ready' ? digest.document : null;
   useEffect(() => {
@@ -81,8 +87,8 @@ export function CallDashboard({
     <div className={`${styles.root} ${styles.withNavigation}`}>
       <nav className={styles.sideNav} aria-label="Call analysis">
         <strong>Call analysis</strong>
-        {[['call-summary','Call summary'],['call-clients','Clients'],['call-quality','Quality per client'],['call-topology','SFU topology'],['call-routers','Routers'],['call-diagnostics','Diagnostics'],['call-samples','Sample browser']].map(([id,label]) => <a key={id} href={`#${id}`}>{label}</a>)}
-        {ready && <><strong>From quality digest</strong><a href="#call-findings">All quality checks</a>{orderedSections().map(s => <a key={s.id} href={`#findings-${s.id}`}>{s.label}</a>)}</>}
+        {[['call-summary','Call summary'],['call-clients','Clients'],['call-quality','Quality per client'],['call-topology','SFU topology'],['call-routers','Routers'],['call-diagnostics','Diagnostics'],['call-samples','Sample browser']].map(([id,label]) => <a key={id} href={`#${id}`} aria-current={activeSection === id ? 'location' : undefined}>{label}</a>)}
+        {ready && <><strong>From quality digest</strong><a href="#call-findings" aria-current={activeSection === 'call-findings' ? 'location' : undefined}>All quality checks</a>{orderedSections().map(s => <a key={s.id} href={`#findings-${s.id}`} aria-current={activeSection === `findings-${s.id}` ? 'location' : undefined}>{s.label}</a>)}</>}
       </nav>
       <div className={styles.stack}>
         <DigestNotice answer={digest} />
@@ -91,7 +97,6 @@ export function CallDashboard({
         <CallFactsCard groups={model.factGroups} />
         {ready && <aside className={styles.digestSummary}><strong>Quality digest available</strong><p>{ready.coverage.clientsAssessed} / {ready.coverage.clientsObserved} clients assessed · {ready.checks.filter(c => c.counts.failed > 0).length} checks with failures. <a href="#call-findings">Review quality checks →</a></p></aside>}
         </div>
-        {ready && <section id="call-findings"><QualityFindings clients={ready.clients} roomId={roomId} callId={callId} />{ready.coverage.limitations?.map((text,i) => <p key={i}>{text}</p>)}</section>}
         <div id="call-quality"><QualityChart
           chart={model.qualityChart}
           startLabel={model.startLabel}
@@ -116,7 +121,8 @@ export function CallDashboard({
         {[...routerSamples.entries()].map(([routerId, sample]) => (
           <RouterDetailSection key={routerId} routerId={routerId} sample={sample} />
         ))}
-        <div id="call-samples"><CallObjectBrowser roomId={roomId} callId={callId} objectNames={objectNames} /></div>
+        <div><CallObjectBrowser roomId={roomId} callId={callId} objectNames={objectNames} /></div>
+        {ready && <section id="call-findings"><QualityFindings clients={ready.clients} roomId={roomId} callId={callId} />{ready.coverage.limitations?.map((text,i) => <p key={i}>{text}</p>)}</section>}
       </div>
     </div>
   );

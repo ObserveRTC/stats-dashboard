@@ -53,7 +53,7 @@ interface CompareTarget {
 }
 
 import { useCallDigest } from '../hooks/useCallDigest.ts';
-import { DigestNotice } from '../components/digest/QualityFindings.tsx';
+import { QualityFindings, DigestNotice } from '../components/digest/QualityFindings.tsx';
 
 export function ClientPage() {
   const params = useParams() ?? {};
@@ -386,6 +386,11 @@ export function ClientPage() {
     if (loading || !entry) return;
     const resolveEvidence = () => {
       const hash = window.location.hash.slice(1);
+      if (processedStats && hash === 'saved-client-findings') {
+        window.history.replaceState(window.history.state, '', '#client-overview/findings');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        return;
+      }
       const fallback = !hasServerView && hash === 'consumers' ? 'inbound-rtp'
         : !hasServerView && hash === 'producers' ? 'outbound-rtp' : null;
       if (!fallback) return;
@@ -395,7 +400,7 @@ export function ClientPage() {
     resolveEvidence();
     window.addEventListener('hashchange', resolveEvidence);
     return () => window.removeEventListener('hashchange', resolveEvidence);
-  }, [loading, entry, hasServerView]);
+  }, [loading, entry, hasServerView, processedStats]);
 
 
   return (
@@ -403,6 +408,11 @@ export function ClientPage() {
       <ClientBar roomId={roomId} callId={callId} currentClientId={clientId} displayName={displayName} />
 
       <DigestNotice answer={digest} />
+      {digestClient && <aside className={styles.digestEntry}>
+        <div><strong>Client quality findings</strong><p>{digestClient.checks.filter(c => c.outcome === 'failed').length} failed checks · {digestClient.coverage.assessedSeconds.toFixed(1)}s assessed</p></div>
+        <a href={processedStats ? '#client-overview/findings' : '#saved-client-findings'}>Review client findings →</a>
+      </aside>}
+      {digestClient && !processedStats && <section id="saved-client-findings"><QualityFindings clients={[digestClient]} roomId={roomId} callId={callId} /></section>}
       {digest.state === 'ready' && !digestClient && <p role="status">This client has no assessment in the call digest.</p>}
 
       {loading && <LoadingSpinner>Loading client report...</LoadingSpinner>}

@@ -22,3 +22,7 @@
   font-size: 0.8rem;
   margin: 0.5rem 0;
 }
+
+.digestEntry { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; padding: 1rem; margin: .75rem 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; }
+.digestEntry p { margin: .35rem 0 0; color: var(--text-muted); font-size: .8rem; }
+.digestEntry a { color: var(--accent); }

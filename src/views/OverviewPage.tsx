@@ -12,6 +12,9 @@ import {
   type PeriodSummary,
 } from '../digest/index.ts';
 import styles from './OverviewPage.module.css';
+import { OverviewQualityPanels } from '../components/digest/OverviewQualityPanels.tsx';
+import { overviewSelection } from '../utils/overviewQuality.ts';
+import { BASE_URL } from '../api/client.ts';
 
 /**
  * The landing page: one reporting period, from one saved summary.
@@ -70,21 +73,49 @@ export function OverviewPage() {
   const [id, setId] = useState(() => utcDay(Date.now()));
   const [answer, setAnswer] = useState<Answer>({ state: 'loading', document: null });
   const [roomId, setRoomId] = useState('');
+  const [selectedCheck, setSelectedCheck] = useState<string | null>(null);
+  useEffect(() => {
+    if (selectedCheck) document.getElementById('overview-affected')?.scrollIntoView({block:'start'});
+  }, [selectedCheck, answer.state]);
 
-  // Switching Daily/Monthly keeps the same point in time rather than resetting
-  // to today, so a reader looking at last Tuesday who switches to Monthly gets
-  // that Tuesday's month.
-  const switchPeriod = useCallback((next: 'day' | 'month') => {
-    setId((current) => (next === 'month' ? current.slice(0, 7) : `${current}-01`));
-    setPeriod(next);
+  const [selectionReady, setSelectionReady] = useState(false);
+  useEffect(() => {
+    const sync = () => {
+      const selection = overviewSelection(window.location.search);
+      setPeriod(selection.period); setId(selection.id);
+      const issue = new URLSearchParams(window.location.search).get('issue');
+      setSelectedCheck(issue && checkDefinition(issue) ? issue : null);
+      setSelectionReady(true);
+    };
+    sync(); window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
   }, []);
+  const selectPeriod = useCallback((next: 'day' | 'month', wanted: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('day'); url.searchParams.delete('month'); url.searchParams.delete('issue');
+    url.searchParams.set(next, wanted);
+    window.history.pushState(window.history.state, '', url);
+    setPeriod(next); setId(wanted); setSelectedCheck(null);
+  }, []);
+  const switchPeriod = useCallback((next: 'day' | 'month') => {
+    if (next !== period) selectPeriod(next, next === 'month' ? id.slice(0,7) : `${id}-01`);
+  }, [period, id, selectPeriod]);
+  const selectCheck = useCallback((check: string | null) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('day'); url.searchParams.delete('month');
+    url.searchParams.set(period, id);
+    if (check) url.searchParams.set('issue', check); else url.searchParams.delete('issue');
+    window.history.pushState(window.history.state, '', url);
+    setSelectedCheck(check);
+  }, [period, id]);
 
   useEffect(() => {
+    if (!selectionReady) return;
     let cancelled = false;
     setAnswer({ state: 'loading', document: null });
 
     const query = period === 'day' ? `day=${id}` : `month=${id}`;
-    fetch(`/api/digest?${query}`)
+    fetch(`${BASE_URL}/api/digest?${query}`)
       .then((res) => res.json())
       .then((body) => {
         if (cancelled) return;
@@ -110,7 +141,7 @@ export function OverviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [period, id]);
+  }, [period, id, selectionReady]);
 
   const openRoom = useCallback(() => {
     const trimmed = roomId.trim();
@@ -136,6 +167,7 @@ export function OverviewPage() {
 
   return (
     <div className={styles.wrapper}>
+      <div className={styles.pageTitle}><h1>Quality overview</h1><p>Call and client quality from saved daily and monthly analytics.</p></div>
       <header className={styles.head}>
         <div className={styles.periodControls}>
           <div className={styles.toggle} role="group" aria-label="Reporting period">
@@ -156,7 +188,7 @@ export function OverviewPage() {
             <button
               type="button"
               className={styles.navBtn}
-              onClick={() => setId(shift(period, id, -1))}
+              onClick={() => selectPeriod(period, shift(period, id, -1))}
               aria-label={`Previous ${period}`}
             >
               &larr;
@@ -165,13 +197,13 @@ export function OverviewPage() {
               className={styles.dateInput}
               type={period === 'day' ? 'date' : 'month'}
               value={id}
-              onChange={(e) => e.target.value && setId(e.target.value)}
+              onChange={(e) => e.target.value && selectPeriod(period, e.target.value)}
               aria-label={period === 'day' ? 'Reporting day' : 'Reporting month'}
             />
             <button
               type="button"
               className={styles.navBtn}
-              onClick={() => setId(shift(period, id, 1))}
+              onClick={() => selectPeriod(period, shift(period, id, 1))}
               disabled={isNow}
               aria-label={`Next ${period}`}
             >
@@ -275,28 +307,32 @@ export function OverviewPage() {
             />
             <Stat
               label="With a symptom"
-              value={doc.classification?.qoeSymptom ?? 0}
+              value={doc.classification?.qoeSymptom ?? null}
               tone={(doc.classification?.qoeSymptom ?? 0) > 0 ? 'bad' : 'plain'}
               hint="sessions showing a user-experience symptom"
             />
             <Stat
               label="Transport only"
-              value={doc.classification?.qosOnly ?? 0}
+              value={doc.classification?.qosOnly ?? null}
               hint="a transport condition with no symptom evidence — not a claim anyone noticed"
             />
             <Stat
               label="Insufficient evidence"
-              value={doc.classification?.insufficientEvidence ?? 0}
+              value={doc.classification?.insufficientEvidence ?? null}
               hint="could not be classified at all; not counted as healthy"
             />
           </div>
 
+          <OverviewQualityPanels document={doc} />
+
           <section className={styles.card}>
-            <h3 className={styles.title}>Findings</h3>
+            <h3 className={styles.title}>Quality issues</h3>
             {failing.length === 0 ? (
               <p className={styles.empty}>
                 No check failed for any session in this {doc.period.kind}
-                {unassessable.length > 0 && (
+
+
+          {unassessable.length > 0 && (
                   <>
                     {' '}
                     — though {unassessable.length} check(s) could not be answered for someone. That
@@ -366,14 +402,7 @@ export function OverviewPage() {
                             )}
                           </td>
                           <td>
-                            {firstCall && (
-                              <a
-                                className={styles.link}
-                                href={`/${encodeURIComponent(firstCall.roomId)}/${encodeURIComponent(firstCall.callId)}#call-findings`}
-                              >
-                                Open a call &rarr;
-                              </a>
-                            )}
+                            {firstCall && <button type="button" className={styles.drillButton} aria-controls="overview-affected" aria-expanded={selectedCheck === roll.id} onClick={() => selectCheck(selectedCheck === roll.id ? null : roll.id)}>View affected calls →</button>}
                           </td>
                         </tr>
                       );
@@ -383,6 +412,17 @@ export function OverviewPage() {
               </div>
             )}
           </section>
+
+                {selectedCheck && (() => {
+            const affected = doc.affected?.find(a => a.id === selectedCheck);
+            return <section id="overview-affected" className={styles.card} aria-live="polite"><div className={styles.affectedHead}><h3 className={styles.title}>{checkQuestion(selectedCheck)}</h3><button type="button" className={styles.drillButton} onClick={() => selectCheck(null)}>Close</button></div>
+              {affected?.truncated && <p className={styles.empty}>This digest contains a capped navigation list. Issue totals above may be larger.</p>}
+              <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Room / call</th><th>Client</th><th>Investigate</th></tr></thead><tbody>
+                {(affected?.clientSessions ?? []).map(c => <tr key={`${c.roomId}/${c.callId}/${c.clientId}`}><td>{c.roomId} / {c.callId.slice(0,8)}…</td><td>{c.displayName || c.clientId}</td><td><a className={styles.link} href={`/${[c.roomId,c.callId].map(encodeURIComponent).join('/')}#call-findings`}>Call findings</a> · <a className={styles.link} href={`/${[c.roomId,c.callId,c.clientId].map(encodeURIComponent).join('/')}#client-overview/findings`}>Client findings →</a></td></tr>)}
+                {(affected?.calls ?? []).filter(c => !affected?.clientSessions?.some(s => s.callId === c.callId && s.roomId === c.roomId)).map(c => <tr key={`${c.roomId}/${c.callId}`}><td>{c.roomId} / {c.callId.slice(0,8)}…</td><td>Not listed in digest</td><td><a className={styles.link} href={`/${[c.roomId,c.callId].map(encodeURIComponent).join('/')}#call-findings`}>Call findings →</a></td></tr>)}
+              </tbody></table></div>
+            </section>;
+          })()}
 
           {unassessable.length > 0 && (
             <section className={styles.card}>
@@ -409,16 +449,8 @@ export function OverviewPage() {
             </section>
           )}
 
-          {/* Which rules produced these answers.
-              A digest keeps the answers it was written with, so two periods on
-              screen can have been judged by different rules — and a reader
-              comparing them has no way to know that unless the page says so.
-              It is one line, it costs nothing, and without it "last week looked
-              better" is unfalsifiable. */}
-          <p className={styles.provenance}>
-            Rules {doc.provenance.rulesVersion} · schema v{doc.provenance.schemaVersion} ·
-            generated {doc.provenance.generatedAt}
-          </p>
+
+
         </>
       )}
       <footer className={styles.branding}>
@@ -435,13 +467,13 @@ function Stat({
   tone = 'plain',
 }: {
   label: string;
-  value: number;
+  value: number | null;
   hint?: string;
   tone?: 'plain' | 'bad';
 }) {
   return (
     <div className={styles.stat} title={hint}>
-      <div className={tone === 'bad' ? styles.statValueBad : styles.statValue}>{value}</div>
+      <div className={tone === 'bad' ? styles.statValueBad : styles.statValue}>{value ?? '—'}</div>
       <div className={styles.statLabel}>{label}</div>
       {hint && <div className={styles.statHint}>{hint}</div>}
     </div>

@@ -5,7 +5,8 @@
 
 .nav {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.25rem;
   padding-inline-end: 90px;
   margin-bottom: var(--space-3);
@@ -57,3 +58,7 @@
     padding: 0.5rem 0.4rem;
   }
 }
+
+.brand { display:inline-flex; align-items:center; gap:.45rem; margin-right:1rem; padding:.6rem 0; color:var(--text-primary); text-decoration:none; font-weight:600; }
+.brand span { color:var(--accent); font-weight:400; }
+@media(max-width:700px) { .brand { flex-basis:100%; } }

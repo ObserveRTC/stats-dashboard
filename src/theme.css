@@ -27,7 +27,8 @@
   --color-bg: #f7f7fb;
   --color-surface: #ffffff;
   --color-text: #1b1c26;
-  --color-accent: #5d5294;
+  --color-accent: #a9440c;
+  --accent-foreground: #ffffff;
   --color-accent-2: #796cbf;
   --color-divider: color-mix(in srgb, #1b1c26 14%, transparent);
 
@@ -131,7 +132,8 @@
   --color-bg: #161826;
   --color-surface: #232532;
   --color-text: #e9e9ed;
-  --color-accent: #9184d9;
+  --color-accent: #ffac70;
+  --accent-foreground: #241409;
   --color-accent-2: #a7a1db;
   --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
 

@@ -359,7 +359,7 @@
 }
 
 .withNavigation { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: 1rem; }
-.sideNav { align-self: start; display: flex; flex-direction: column; gap: .25rem; padding: .75rem; background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 8px; }
+.sideNav { position: sticky; top: 1rem; align-self: start; display: flex; flex-direction: column; gap: .25rem; padding: .75rem; background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 8px; }
 .sideNav a { color: var(--text-muted); padding: .5rem; text-decoration: none; overflow-wrap: anywhere; }
 .sideNav a:hover { color: var(--accent); }
 .sideNav strong { margin: .5rem 0; font-size: .8rem; }
@@ -368,3 +368,7 @@
 .digestSummary { padding: 1rem; margin-top: .75rem; background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 8px; }
 .digestSummary p { margin-bottom: 0; }
 .digestSummary a { color: var(--accent); }
+
+@media(max-width:800px) { .sideNav { position:static; } }
+
+.sideNav a[aria-current="location"] { color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); border-radius:6px; }

@@ -53,7 +53,7 @@
 
 .toggleActive {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-foreground);
 }
 
 .dateNav {
@@ -151,7 +151,7 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -328,3 +328,13 @@
 .branding a:hover {
   text-decoration: underline;
 }
+
+.drillButton { background:transparent; border:0; padding:.35rem 0; color:var(--accent); cursor:pointer; font:inherit; text-align:left; }
+.drillButton:hover { text-decoration:underline; }
+.affectedHead { display:flex; justify-content:space-between; gap:1rem; }
+
+@media(max-width:600px) { .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:360px) { .cards { grid-template-columns:minmax(0,1fr); } }
+
+.pageTitle h1 { margin:.5rem 0; font-size:1.5rem; font-weight:600; }
+.pageTitle p { margin:0; font-size:.85rem; color:var(--text-muted); }

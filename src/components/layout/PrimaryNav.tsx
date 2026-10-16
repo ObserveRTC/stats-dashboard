@@ -42,6 +42,7 @@ export function PrimaryNav() {
 
   return (
     <nav className={styles.nav} aria-label="Primary">
+      <Link href="/" className={styles.brand}>ObserveRTC <span>Stats</span></Link>
       {ITEMS.map((item) => {
         const active = current === item.href;
         return (

@@ -12,3 +12,7 @@
 .outcome { display: inline-block; margin-left: .6rem; font-size: .8rem; color: var(--text-muted); }
 .outcome[data-outcome="failed"] { color: var(--quality-poor); }
 .outcome[data-outcome="passed"] { color: var(--quality-good); }
+
+.counts { display:flex; flex-wrap:wrap; gap:.7rem; margin:.8rem 0; }
+.counts span { padding:.35rem .6rem; border-radius:6px; background:var(--bg-secondary); font-size:.8rem; }
+.counts [data-outcome="failed"] { color:var(--quality-poor); }
