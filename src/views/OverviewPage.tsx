@@ -9,7 +9,6 @@ import {
   checkDefinition,
   checkQuestion,
   checkSection,
-  orderedSections,
   type PeriodSummary,
 } from '../digest/index.ts';
 import styles from './OverviewPage.module.css';
@@ -410,12 +409,21 @@ export function OverviewPage() {
             </section>
           )}
 
+          {/* Which rules produced these answers.
+              A digest keeps the answers it was written with, so two periods on
+              screen can have been judged by different rules — and a reader
+              comparing them has no way to know that unless the page says so.
+              It is one line, it costs nothing, and without it "last week looked
+              better" is unfalsifiable. */}
           <p className={styles.provenance}>
-            Rules {doc.provenance.rulesVersion} · schema v{doc.provenance.schemaVersion} · generated{' '}
-            {doc.provenance.generatedAt} · {orderedSections().length} sections
+            Rules {doc.provenance.rulesVersion} · schema v{doc.provenance.schemaVersion} ·
+            generated {doc.provenance.generatedAt}
           </p>
         </>
       )}
+      <footer className={styles.branding}>
+        Powered by <a href="https://observertc.org/" target="_blank" rel="noopener noreferrer">ObserveRTC</a>
+      </footer>
     </div>
   );
 }
