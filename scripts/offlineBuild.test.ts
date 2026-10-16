@@ -31,7 +31,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -103,11 +103,34 @@ check('the vendored face exists and is a real woff2', () => {
   assert.equal(head, 'wOF2', `${named[1]} is not a woff2 (starts with ${JSON.stringify(head)})`);
 });
 
-check('the face reaches the Docker build context', () => {
+check('no .dockerignore rule strips the face out of the build context', () => {
   // The build stage runs `next build`, so a .dockerignore rule that excluded
   // the font would reproduce the original failure with a different error — and
   // only on the node, never locally.
-  const ignore = readFileSync(join(root, '.dockerignore'), 'utf8')
+  //
+  // This test runs in two places and .dockerignore exists in only one of them:
+  // it ignores itself, so the copy of the tree inside the image does not have
+  // it. That is not a gap. Inside the image, the check above — the file is
+  // there and starts with `wOF2` — IS the context check, and a stronger one
+  // than reading rules: it observes the filtered tree directly rather than
+  // predicting what the filter will do. So the rule reading happens where the
+  // rules are, and says which of the two it did.
+  const dockerignore = join(root, '.dockerignore');
+  if (!existsSync(dockerignore)) {
+    // Belt and braces. `Dockerfile*` is ignored too, so the real checkout has
+    // both files and the filtered tree has neither. A checkout missing only
+    // .dockerignore is somebody having deleted it, and this branch must not
+    // excuse that.
+    assert.ok(
+      !existsSync(join(root, 'Dockerfile')),
+      'there is a Dockerfile but no .dockerignore, so this is the checkout with\n' +
+        'its ignore file missing rather than the filtered tree inside the image',
+    );
+    console.log('        (no .dockerignore: running inside the filtered context, already proven above)');
+    return;
+  }
+
+  const ignore = readFileSync(dockerignore, 'utf8')
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#'));
