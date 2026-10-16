@@ -1,13 +1,15 @@
 /*
  * Inter is self-hosted, not imported from fonts.googleapis.com.
  *
- * `next/font/google` (see app/layout.tsx) downloads the face at build time and
- * serves it from this app's own origin, exposing it as the CSS variable
- * `--font-inter`. That matters for a self-hosted deployment: an `@import` of a
- * Google URL is an outbound request from every viewer's browser to a third
- * party, which an air-gapped or egress-restricted network blocks — leaving the
- * dashboard to render in the fallback face after a visible delay — and which
- * an operator running this on their own infrastructure did not agree to.
+ * The face is a file in src/fonts/, loaded by `next/font/local` (see
+ * app/layout.tsx) and exposed as the CSS variable `--font-inter`. That matters
+ * for a self-hosted deployment: an `@import` of a Google URL is an outbound
+ * request from every viewer's browser to a third party, which an air-gapped or
+ * egress-restricted network blocks — leaving the dashboard to render in the
+ * fallback face after a visible delay — and which an operator running this on
+ * their own infrastructure did not agree to. Vendoring it rather than letting
+ * `next/font/google` download it also keeps `next build` offline, which is what
+ * a build inside a Docker container with no egress needs.
  *
  * The stacks below name `var(--font-inter)` first and keep real fallbacks, so
  * the page is still correct if the face fails to load.
